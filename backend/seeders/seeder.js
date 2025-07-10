@@ -24,8 +24,8 @@ const seed = async () => {
         ]);
 
         // Create users
-        const passHash = await bcrypt.hash('password123', 10);
-        const admin = await User.create({ name: 'Admin User', email: 'admin@example.com', role: 'admin', password: passHash });
+        const passHash = await bcrypt.hash('123456', 10);
+        const admin = await User.create({ name: 'Admin User', email: 'yaron155@gmail.com', role: 'admin', password: passHash });
         const operator = await User.create({ name: 'Operator User', email: 'operator@example.com', role: 'operator', password: passHash });
         const mechanic = await User.create({ name: 'Mechanic User', email: 'mechanic@example.com', role: 'mechanic', password: passHash });
 
