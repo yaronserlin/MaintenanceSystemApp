@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
+    if (!req.body) return res.status(400).json({ message: 'No data provided' });
     const { name, email, password, role } = req.body;
     try {
         if (await User.findOne({ email })) {
@@ -18,6 +19,7 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
+    if (!req.body) return res.status(400).json({ message: 'No data provided' });
     const { email, password } = req.body;
     try {
         const user = await User.findOne({ email });
@@ -26,7 +28,23 @@ exports.login = async (req, res) => {
         }
         const payload = { userId: user._id, role: user.role };
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.json({ token });
+        res.json({ token, user: { name: user.name, email: user.email } });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+// GET /auth/me
+exports.me = async (req, res) => {
+    // req.user was set by authenticateToken
+    const { userId } = req.user;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
+        res.json({ name: user.name, email: user.email });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }

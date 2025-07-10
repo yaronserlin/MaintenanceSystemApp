@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
         if (token) {
             apiClient.setToken(token);
             apiClient.get('/auth/me')
-                .then(res => setUser(res.data.user))
+                .then(res => setUser(res.data))
                 .catch(() => {
                     localStorage.removeItem('token');
                     apiClient.setToken(null);
@@ -31,8 +31,8 @@ export const AuthProvider = ({ children }) => {
 
     // Login function
     const login = async (email, password) => {
-        // const { data } = await apiClient.post('/auth/login', credentials);
-        const data = { token: "12345", user: { email, name: "Yaron Serlin", avatarUrl: '' } }
+        const { data } = await apiClient.post('/auth/login', { email, password });
+        // const data = { token: "12345", user: { email, name: "Yaron Serlin", avatarUrl: '' } }
         localStorage.setItem('token', data.token);
         apiClient.setToken(data.token);
         setUser(data.user);
