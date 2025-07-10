@@ -2,11 +2,11 @@
   "name": "backend",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "defaultLanguage": "en",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "seed": "node seeders/seeder.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
