@@ -25,14 +25,14 @@ const seed = async () => {
 
         // Create users
         const passHash = await bcrypt.hash('123456', 10);
-        const admin = await User.create({ name: 'Admin User', email: 'yaron155@gmail.com', role: 'admin', password: passHash });
+        const admin = await User.create({ name: 'Yaron serlin', email: 'yaron155@gmail.com', role: 'admin', password: passHash });
         const operator = await User.create({ name: 'Operator User', email: 'operator@example.com', role: 'operator', password: passHash });
         const mechanic = await User.create({ name: 'Mechanic User', email: 'mechanic@example.com', role: 'mechanic', password: passHash });
 
         // Create tools
         const tools = await Tool.insertMany([
-            { name: 'Tractor Model X', serialNumber: 'T1001', description: 'Heavy-duty tractor' },
-            { name: 'Harvester Alpha', serialNumber: 'H2002', description: 'Field harvester' },
+            { name: 'Class 890', serialNumber: 'T1001', description: 'Heavy-duty tractor', localSerialNumber: '23', model: '890' },
+            { name: 'Krone 770', serialNumber: 'H2002', description: 'Field harvester', localSerialNumber: '24', model: '770' },
         ]);
 
         // Create parts
@@ -49,9 +49,20 @@ const seed = async () => {
 
         // Create faults
         await Fault.insertMany([
-            { tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
-            { tool: tools[1]._id, operator: operator._id, description: 'Blade damage', photos: [], status: 'closed' },
+            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "001", tool: tools[1]._id, operator: operator._id, description: 'Blade damage', photos: [], status: 'closed', closedAt: new Date() },
         ]);
+        // Associate faults with tools
+        const faults = await Fault.find();
+        for (const fault of faults) {
+            await Tool.updateOne(
+                { _id: fault.tool },
+                { $push: { faults: fault._id } }
+            );
+        }
 
         console.log('Database seeded successfully');
         process.exit(0);
