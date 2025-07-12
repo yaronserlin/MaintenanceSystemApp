@@ -31,12 +31,24 @@ export const AuthProvider = ({ children }) => {
 
     // Login function
     const login = async (email, password) => {
-        const { data } = await apiClient.post('/auth/login', { email, password });
-        // const data = { token: "12345", user: { email, name: "Yaron Serlin", avatarUrl: '' } }
-        localStorage.setItem('token', data.token);
-        apiClient.setToken(data.token);
-        setUser(data.user);
-        navigate('/dashboard');
+        setLoading(true);
+        try {
+            const { data } = await apiClient.post('/auth/login', { email, password });
+            localStorage.setItem('token', data.token);
+            apiClient.setToken(data.token);
+            setUser(data.user);
+            navigate('/dashboard');
+        } catch (error) {
+            if (error.response && error.response.data) {
+                throw new Error(error.response.data.message || 'Login failed, please check your credentials');
+            } else {
+                throw new Error('Login failed, please try again later');
+            }
+        }
+        finally {
+            setLoading(false);
+        }
+
     };
 
     // Logout function
