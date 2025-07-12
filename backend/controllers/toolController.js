@@ -2,12 +2,12 @@
 const Tool = require('../models/Tool');
 
 exports.getAllTools = async (req, res) => {
-    const tools = await Tool.find();
+    const tools = await Tool.find().populate('faults');
     res.json(tools);
 };
 
 exports.getToolById = async (req, res) => {
-    const tool = await Tool.findById(req.params.id);
+    const tool = await Tool.findById(req.params.id).populate('faults');
     if (!tool) return res.status(404).json({ message: 'Tool not found' });
     res.json(tool);
 };
