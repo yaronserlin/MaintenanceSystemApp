@@ -22,14 +22,18 @@ function LoginCard() {
     }
 
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Invoke callback or handle login logic here
-        // console.log(email, password);
-        login(email, password)
-        // if (onLogin) onLogin({ email, password });
+        try {
+            await login(email, password)
+            console.log('Login successful');
 
-        reset();
+            reset();
+        } catch (error) {
+            console.error(error.message);
+
+        }
+
     };
 
     return (
@@ -87,7 +91,7 @@ function LoginCard() {
                             />
                         </FormControl>
                         <Button type="submit" variant="contained" fullWidth>
-                            Login
+                            {loading ? 'Logging in...' : 'Login'}
                         </Button>
                     </Box>
                 </CardContent>
