@@ -14,7 +14,7 @@ function Navbar({ pages, settings }) {
 
 
     return (
-        <AppBar position="fixed">
+        <AppBar position="sticky">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
                     <MobileNav display={{ xs: 'flex', md: 'none' }} user={user} pages={pages} />
