@@ -10,51 +10,63 @@ import ToolPage from './pages/ToolPage';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import Logout from './pages/Logout';
+import { Container } from '@mui/material';
+import ToolsPage from './pages/ToolsPage';
 
-const pages = ['Dashboard'];
+const pages = ['Dashboard', 'Tools'];
 const settings = ['Profile', 'Account', 'Logout'];
 
 export default function AppRoutes() {
     return (
         <AuthProvider>
             <Navbar pages={pages} settings={settings} />
-            <Routes>
-                {/* Redirect root to dashboard */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Container sx={{ mt: 4, mb: 4 }}>
+                <Routes>
+                    {/* Redirect root to dashboard */}
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
+                    {/* Public routes */}
+                    <Route path="/login" element={<Login />} />
 
-                {/* Protected routes */}
-                <Route
-                    path="/dashboard"
-                    element={
-                        <ProtectedRoute>
-                            <Dashboard />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/tools/:toolId/*"
-                    element={
-                        <ProtectedRoute>
-                            <ToolPage />
-                        </ProtectedRoute>
-                    }
-                />
+                    {/* Protected routes */}
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <ProtectedRoute>
+                                <Dashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/tools"
+                        element={
+                            <ProtectedRoute>
+                                <ToolsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/tools/:id/"
+                        element={
+                            <ProtectedRoute>
+                                <ToolPage />
+                            </ProtectedRoute>
+                        }
+                    />
 
-                <Route
-                    path="/logout"
-                    element={
-                        <ProtectedRoute>
-                            <Logout/>
-                        </ProtectedRoute>
-                    }
-                />
+                    <Route
+                        path="/logout"
+                        element={
+                            <ProtectedRoute>
+                                <Logout />
+                            </ProtectedRoute>
+                        }
+                    />
 
-                {/* Fallback */}
-                <Route path="*" element={<NotFound />} />
-            </Routes>
+                    {/* Fallback */}
+                    <Route path="*" element={<NotFound />} />
+                </Routes>
+            </Container>
         </AuthProvider>
     );
 }
