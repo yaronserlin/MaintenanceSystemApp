@@ -11,9 +11,10 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../../contexts/AuthContext';
-
+import ExtendedDate from '../../../utils/dateUtils';
 export default function FaultCard({ fault, onClick, onCloseFault, onDeleteFault }) {
     const { user } = useAuth();
+
 
     return (
         <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -28,7 +29,7 @@ export default function FaultCard({ fault, onClick, onCloseFault, onDeleteFault 
                         Status: {fault.status}
                     </Typography>
                     <Typography variant="caption" display="block">
-                        Reported: {new Date(fault.createdAt).toLocaleDateString()}
+                        Reported: {new Date(fault.createdAt).toLocaleDateString('en-GB')}
                     </Typography>
                 </CardContent>
             </CardActionArea>
