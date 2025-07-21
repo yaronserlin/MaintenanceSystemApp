@@ -2,6 +2,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingComponent from '../LoadingComponent/LoadingComponent';
 
 /**
  * Wraps protected routes, redirecting unauthenticated users to login
@@ -12,7 +13,7 @@ const ProtectedRoute = ({ children }) => {
 
     if (loading) {
         // You can replace this with a spinner component
-        return <div>Loading...</div>;
+        return <LoadingComponent />;
     }
 
     if (!user) {
