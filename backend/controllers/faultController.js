@@ -28,7 +28,6 @@ exports.createFault = async (req, res, next) => {
         const fault = await Fault.create({
             ...req.body,
             operator: req.user.userId,
-            photos
         });
 
         // Push the new fault’s _id into the Tool's faults array
