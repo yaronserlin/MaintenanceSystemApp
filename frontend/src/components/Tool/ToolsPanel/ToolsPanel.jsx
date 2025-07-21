@@ -14,6 +14,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import adminService from '../../../services/adminService';
 import { useNavigate } from 'react-router-dom';
 import { CreateToolForm, UpdateToolForm } from '../ToolForms/ToolForms';
+import LoadingComponent from '../../LoadingComponent/LoadingComponent';
+import ErrorComponent from '../../ErrorComponent/ErrorComponent';
 
 export default function ToolsPanel() {
     const [users, setUsers] = useState([]);
@@ -123,6 +125,16 @@ export default function ToolsPanel() {
             setError('Failed to delete tool');
         }
     };
+
+    if (loading) {
+        return <LoadingComponent />;
+    }
+
+    if (error) {
+        return (
+            <ErrorComponent message={error} onRetry={() => window.location.reload()} />
+        );
+    }
 
 
     return (
