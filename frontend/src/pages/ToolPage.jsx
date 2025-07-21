@@ -71,7 +71,7 @@ export default function ToolPage() {
     };
 
     const handleCreateSubmit = async (values) => {
-        console.log('Creating fault with values:', values);
+        console.log('Creating fault with values:', values, user);
 
         try {
             await faultService.create({
