@@ -1,65 +1,48 @@
-import * as React from 'react';
+// src/components/Navbar/DesktopNav.jsx
+import React from 'react';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import { useNavigate } from 'react-router-dom';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+
 export default function DesktopNav({ display, user, pages }) {
     const navigate = useNavigate();
-    const [anchorElNav, setAnchorElNav] = React.useState(null);
-    const [anchorElUser, setAnchorElUser] = React.useState(null);
 
-
-
-    const handleOpenNavMenu = (event) => {
-        setAnchorElNav(event.currentTarget);
-    };
-    const handleOpenUserMenu = (event) => {
-        setAnchorElUser(event.currentTarget);
-    };
-
-    const handleCloseNavMenu = () => {
-        setAnchorElNav(null);
-    };
-
-    const handleCloseUserMenu = () => {
-        setAnchorElUser(null);
-    };
+    if (!user) return null;
 
     return (
         <>
-            <AgricultureIcon sx={{ display: display, mr: 1 }} />
+            <AgricultureIcon sx={{ display, mr: 1 }} />
             <Typography
                 variant="h6"
                 noWrap
-                component="a"
-                href="#"
+                component="div"
                 onClick={() => navigate('/')}
                 sx={{
                     mr: 2,
-                    display: { xs: 'none', md: 'flex' },
+                    display,
                     fontFamily: 'monospace',
                     fontWeight: 700,
                     letterSpacing: '.3rem',
                     color: 'inherit',
                     textDecoration: 'none',
+                    cursor: 'pointer',
                 }}
             >
                 MAINTENANCE APP
             </Typography>
-            {user && <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-                {pages.map((page) => (
+            <Box sx={{ flexGrow: 1, display }}>
+                {pages.map(page => (
                     <Button
                         key={page}
-                        onClick={(event) => { handleCloseNavMenu(event), navigate(page) }}
+                        onClick={() => navigate(`/${page.toLowerCase()}`)}
                         sx={{ my: 2, color: 'white', display: 'block' }}
                     >
                         {page}
                     </Button>
-
-
                 ))}
-            </Box>}
+            </Box>
         </>
-    )
+    );
 }
