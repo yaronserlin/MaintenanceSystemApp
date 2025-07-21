@@ -16,35 +16,39 @@ export default function MobileNav({ display, user, pages }) {
     const handleOpen = e => setAnchorEl(e.currentTarget);
     const handleClose = () => setAnchorEl(null);
 
-    if (!user) return null;
 
     return (
         <>
             <Box sx={{ flexGrow: 1, display }}>
-                <IconButton size="large" onClick={handleOpen} color="inherit">
-                    <MenuIcon />
-                </IconButton>
-                <Menu
-                    anchorEl={anchorEl}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                    keepMounted
-                    transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                    open={Boolean(anchorEl)}
-                    onClose={handleClose}
-                    sx={{ display: { xs: 'block', md: 'none' } }}
-                >
-                    {pages.map(page => (
-                        <MenuItem
-                            key={page}
-                            onClick={() => {
-                                handleClose();
-                                navigate(`/${page.toLowerCase()}`);
-                            }}
+                {user && (
+                    <>
+                        <IconButton size="large" onClick={handleOpen} color="inherit">
+                            <MenuIcon />
+                        </IconButton>
+                        <Menu
+                            anchorEl={anchorEl}
+                            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                            keepMounted
+                            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                            open={Boolean(anchorEl)}
+                            onClose={handleClose}
+                            sx={{ display: { xs: 'block', md: 'none' } }}
                         >
-                            <Typography textAlign="center">{page}</Typography>
-                        </MenuItem>
-                    ))}
-                </Menu>
+                            {pages.map(page => (
+                                <MenuItem
+                                    key={page}
+                                    onClick={() => {
+                                        handleClose();
+                                        navigate(`/${page.toLowerCase()}`);
+                                    }}
+                                >
+                                    <Typography textAlign="center">{page}</Typography>
+                                </MenuItem>
+                            ))}
+                        </Menu>
+                    </>
+                )}
+
             </Box>
             <AgricultureIcon sx={{ display, mr: 1 }} />
             <Typography
