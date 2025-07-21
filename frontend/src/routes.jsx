@@ -36,14 +36,6 @@ export default function AppRoutes() {
                     <Route path="/login" element={<Login />} />
 
                     {/* Protected routes */}
-                    {/* <Route
-                        path="/dashboard"
-                        element={
-                            <ProtectedRoute>
-                                <Dashboard />
-                            </ProtectedRoute>
-                        }
-                    /> */}
                     <Route
                         path="/tools"
                         element={
@@ -51,6 +43,7 @@ export default function AppRoutes() {
                                 <ToolsPage />
                             </ProtectedRoute>
                         }
+                        
                     />
                     <Route
                         path="/tools/:id/"
