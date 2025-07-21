@@ -10,6 +10,7 @@ const toolRoutes = require('./routes/toolRoutes');
 const faultRoutes = require('./routes/faultRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const partRoutes = require('./routes/partRoutes');
+const adminRoutes = require('./routes/adminRoutes'); // Uncomment when admin routes are implemented
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/tools', toolRoutes);
 app.use('/api/faults', faultRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/parts', partRoutes);
+app.use('/api/admin', adminRoutes); // Admin routes
 
 // Error handler for JSON parse errors
 app.use((err, req, res, next) => {
