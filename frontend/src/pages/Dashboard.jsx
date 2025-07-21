@@ -3,12 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { Container, Grid, Typography, Card, CardContent, CircularProgress, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
-import FaultCard from '../components/FaultCard/FaultCard';
+// import FaultCard from '../components/FaultCard/FaultCard';
 
 import { useNavigate } from 'react-router-dom';
-import FaultModal from '../components/FaultModal/FaultModal';
-import FaultList from '../components/FaultList/FaultList';
-import FaultForm from '../components/FaultForm/FaultForm';
+import FaultModal from '../components/Fault/FaultModal/FaultModal';
+import FaultList from '../components/Fault/FaultList/FaultList';
 
 const Dashboard = () => {
     const { user } = useAuth();
@@ -112,7 +111,6 @@ const Dashboard = () => {
             </Grid>
 
             <FaultList />
-            <FaultForm />
         </Container>
     );
 };

@@ -27,11 +27,9 @@ function LoginCard() {
         try {
             await login(email, password)
             console.log('Login successful');
-
             reset();
         } catch (error) {
             console.error(error.message);
-
         }
 
     };
@@ -42,7 +40,7 @@ function LoginCard() {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                height: '95vh',
+                height: '80vh',
                 p: 2,
             }}
         >
@@ -95,9 +93,9 @@ function LoginCard() {
                         </Button>
                     </Box>
                 </CardContent>
-                <CardActions sx={{ justifyContent: 'flex-end' }}>
+                {/* <CardActions sx={{ justifyContent: 'flex-end' }}>
                     <Button size="small">Forgot Password?</Button>
-                </CardActions>
+                </CardActions> */}
             </Card>
         </Container>
     );

@@ -1,7 +1,7 @@
 // routes/toolRoutes.js
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/authMiddleware');
 const {
   getAllTools,
   getToolById,
@@ -10,10 +10,10 @@ const {
   deleteTool,
 } = require('../controllers/toolController');
 
-router.get('/', auth, getAllTools);
-router.get('/:id', auth, getToolById);
-router.post('/', auth, createTool);
-router.put('/:id', auth, updateTool);
-router.delete('/:id', auth, deleteTool);
+router.get('/', verifyToken, getAllTools);
+router.get('/:id', verifyToken, getToolById);
+router.post('/', verifyToken, createTool);
+router.put('/:id', verifyToken, updateTool);
+router.delete('/:id', verifyToken, deleteTool);
 
 module.exports = router;

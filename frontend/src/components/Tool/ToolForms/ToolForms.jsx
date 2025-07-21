@@ -20,8 +20,8 @@ function ToolFormFields({ values, onChange }) {
             />
             <TextField
                 label="Local Serial Number"
-                name="loacalSerialNumber"
-                value={values.loacalSerialNumber}
+                name="localSerialNumber"
+                value={values.localSerialNumber}
                 onChange={onChange}
             />
             <TextField
@@ -81,7 +81,7 @@ export function UpdateToolForm({ initialData = {}, onSubmit }) {
     const [values, setValues] = useState({
         name: '',
         serialNumber: '',
-        loacalSerialNumber: '',
+        localSerialNumber: '',
         model: '',
         description: '',
     });
@@ -91,7 +91,7 @@ export function UpdateToolForm({ initialData = {}, onSubmit }) {
             setValues({
                 name: initialData.name || '',
                 serialNumber: initialData.serialNumber || '',
-                loacalSerialNumber: initialData.loacalSerialNumber || '',
+                localSerialNumber: initialData.localSerialNumber || '',
                 model: initialData.model || '',
                 description: initialData.description || '',
             });

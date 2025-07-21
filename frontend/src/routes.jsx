@@ -12,31 +12,38 @@ import NotFound from './pages/NotFound';
 import Logout from './pages/Logout';
 import { Container } from '@mui/material';
 import ToolsPage from './pages/ToolsPage';
+import ProfilePage from './pages/ProfilePage';
+import AccountPage from './pages/AccountPage';
+import AdminDashboard from './pages/AdminDashboard';
+import RequireAdmin from './components/RequireAdmin/RequireAdmin';
 
-const pages = ['Dashboard', 'Tools'];
-const settings = ['Profile', 'Account', 'Logout'];
+
 
 export default function AppRoutes() {
+    const pages = ['Tools'];
+    const settings = ['Profile', 'Account', 'Logout'];
+
+
     return (
         <AuthProvider>
             <Navbar pages={pages} settings={settings} />
             <Container sx={{ mt: 4, mb: 4 }}>
                 <Routes>
                     {/* Redirect root to dashboard */}
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<Navigate to="/tools" replace />} />
 
                     {/* Public routes */}
                     <Route path="/login" element={<Login />} />
 
                     {/* Protected routes */}
-                    <Route
+                    {/* <Route
                         path="/dashboard"
                         element={
                             <ProtectedRoute>
                                 <Dashboard />
                             </ProtectedRoute>
                         }
-                    />
+                    /> */}
                     <Route
                         path="/tools"
                         element={
@@ -59,6 +66,32 @@ export default function AppRoutes() {
                         element={
                             <ProtectedRoute>
                                 <Logout />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <ProtectedRoute>
+                                <ProfilePage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/account"
+                        element={
+                            <ProtectedRoute>
+                                <AccountPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute>
+                                <RequireAdmin>
+                                    <AdminDashboard />
+                                </RequireAdmin>
                             </ProtectedRoute>
                         }
                     />

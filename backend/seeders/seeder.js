@@ -49,10 +49,10 @@ const seed = async () => {
 
         // Create faults
         await Fault.insertMany([
-            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
-            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
-            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
-            { code: "000", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "005", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "002", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "003", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
+            { code: "004", tool: tools[0]._id, operator: operator._id, description: 'Engine overheating', photos: [], status: 'open' },
             { code: "001", tool: tools[1]._id, operator: operator._id, description: 'Blade damage', photos: [], status: 'closed', closedAt: new Date() },
         ]);
         // Associate faults with tools

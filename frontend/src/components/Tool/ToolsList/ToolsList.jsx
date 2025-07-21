@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom';
  * clicking the edit icon selects it for update, and clicking the delete icon
  * triggers the deletion flow.
  */
-export default function ToolsList({ tools, onSelect, onDelete }) {
+export default function ToolsList({ tools }) {
     const navigate = useNavigate();
 
     if (tools.length === 0) {
@@ -37,16 +37,6 @@ export default function ToolsList({ tools, onSelect, onDelete }) {
                 <React.Fragment key={tool._id}>
                     <ListItem
                         disablePadding
-                        secondaryAction={
-                            <Box>
-                                <IconButton edge="end" aria-label="edit" onClick={() => onSelect(tool)}>
-                                    <EditIcon />
-                                </IconButton>
-                                <IconButton edge="end" aria-label="delete" onClick={() => onDelete(tool)}>
-                                    <DeleteIcon />
-                                </IconButton>
-                            </Box>
-                        }
                     >
                         <ListItemButton onClick={() => navigate(`/tools/${tool._id}`)}>
                             <ListItemText
