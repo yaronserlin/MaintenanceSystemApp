@@ -9,9 +9,7 @@ root.render(
   <React.StrictMode>
     {/* This BrowserRouter must be the parent of any <Routes> */}
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <AppRoutes />
     </BrowserRouter>
   </React.StrictMode>
 );
