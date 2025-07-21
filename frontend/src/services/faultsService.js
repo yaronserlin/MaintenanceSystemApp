@@ -17,6 +17,16 @@ const faultService = {
     close: (id) =>
         apiClient.patch(`/faults/${id}/close`)
             .then(res => res.data),
+    reopen: (id) =>
+        apiClient.patch(`/faults/${id}/reopen`)
+            .then(res => res.data),
+    update: (id, payload) =>
+        apiClient.put(`/faults/${id}`, payload)
+            .then(res => res.data),
+    delete: (id) =>
+        apiClient.delete(`/faults/${id}`)
+            .then(res => res.data),
+
 };
 
 export default faultService;

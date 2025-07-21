@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Alert } from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 /**
@@ -35,6 +35,7 @@ export default function ErrorComponent({ message, onRetry }) {
             <ErrorOutlineIcon sx={{ fontSize: 48, color: 'error.main', mb: 2 }} />
             <Typography variant="h6" component="p" gutterBottom>
                 {text}
+
             </Typography>
             {onRetry && (
                 <Button variant="contained" color="primary" onClick={onRetry} sx={{ mt: 2 }}>

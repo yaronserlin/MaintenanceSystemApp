@@ -7,10 +7,20 @@ exports.getAllTools = async (req, res) => {
 };
 
 exports.getToolById = async (req, res) => {
-    const tool = await Tool.findById(req.params.id).populate('faults');
+    const tool = await Tool.findById(req.params.id)
+        .populate({
+            path: 'faults',
+            populate: {
+                path: 'operator',
+                select: 'name'
+            }
+
+        });
     if (!tool) return res.status(404).json({ message: 'Tool not found' });
     res.json(tool);
 };
+
+
 
 exports.createTool = async (req, res) => {
     const tool = await Tool.create(req.body);
@@ -18,11 +28,16 @@ exports.createTool = async (req, res) => {
 };
 
 exports.updateTool = async (req, res) => {
-    const tool = await Tool.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const tool = await Tool.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true }
+    );
+    if (!tool) return res.status(404).json({ message: 'Tool not found' });
     res.json(tool);
 };
 
 exports.deleteTool = async (req, res) => {
     await Tool.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Tool deleted' });
+    res.status(204).end();
 };
