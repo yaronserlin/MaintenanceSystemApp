@@ -42,7 +42,7 @@ exports.me = async (req, res) => {
     try {
         const user = await User.findById(userId);
         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
-        res.json({ name: user.name, email: user.email, id: user._id, role: user.role });
+        res.json({ name: user.name, email: user.email, _id: user._id, role: user.role });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
