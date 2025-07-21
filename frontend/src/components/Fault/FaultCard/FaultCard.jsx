@@ -11,7 +11,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../../contexts/AuthContext';
-import ExtendedDate from '../../../utils/dateUtils';
 export default function FaultCard({ fault, onClick, onCloseFault, onDeleteFault }) {
     const { user } = useAuth();
 
