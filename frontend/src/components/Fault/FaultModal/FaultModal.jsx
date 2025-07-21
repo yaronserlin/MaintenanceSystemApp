@@ -53,7 +53,7 @@ export default function FaultModal({ fault, handleClose, open }) {
                             {fault.description}
                         </Typography>
                         <Typography sx={{ mt: 2 }}>
-                            Created at {fault.createdAt ? new Date(fault.createdAt).toLocaleDateString() : 'N/A'}
+                            Created at {fault.createdAt ? new Date(fault.createdAt).toLocaleDateString('en-GB') : 'N/A'}
                         </Typography>
                         <Button onClick={handleClose}>
                             Close

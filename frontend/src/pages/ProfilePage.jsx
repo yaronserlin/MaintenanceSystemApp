@@ -50,7 +50,7 @@ export default function ProfilePage() {
                 Status: {fault.status}
               </Typography>
               <Typography variant="caption" display="block">
-                Reported: {new Date(fault.createdAt).toLocaleDateString()}
+                Reported: {new Date(fault.createdAt).toLocaleDateString('en-GB')}
               </Typography>
             </CardContent>
           </Card>
