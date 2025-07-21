@@ -1,8 +1,8 @@
 // src/routes.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar/Navbar';
-import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+
+import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 
 import Dashboard from './pages/Dashboard';
@@ -15,7 +15,8 @@ import ToolsPage from './pages/ToolsPage';
 import ProfilePage from './pages/ProfilePage';
 import AccountPage from './pages/AccountPage';
 import AdminDashboard from './pages/AdminDashboard';
-import RequireAdmin from './components/RequireAdmin/RequireAdmin';
+import RequireAdmin from './components/RequireAdmin';
+import Navbar from './components/Navbar';
 
 
 
@@ -43,7 +44,7 @@ export default function AppRoutes() {
                                 <ToolsPage />
                             </ProtectedRoute>
                         }
-                        
+
                     />
                     <Route
                         path="/tools/:id/"
