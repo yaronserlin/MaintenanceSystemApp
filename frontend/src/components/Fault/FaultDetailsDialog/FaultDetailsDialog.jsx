@@ -36,7 +36,7 @@ export default function FaultDetailsDialog({ open, onClose, fault }) {
                         <ListItem>
                             <ListItemText
                                 primary="Reported At"
-                                secondary={new Date(fault.createdAt).toLocaleString()}
+                                secondary={new Date(fault.createdAt).toLocaleString("en-GB")}
                             />
                         </ListItem>
                         {fault.status === 'closed' && (
@@ -44,7 +44,7 @@ export default function FaultDetailsDialog({ open, onClose, fault }) {
                                 <ListItemText
                                     primary="Closed At"
                                     secondary={
-                                        fault.closedAt ? new Date(fault.closedAt).toLocaleString() : 'N/A'
+                                        fault.closedAt ? new Date(fault.closedAt).toLocaleString("en-GB") : 'N/A'
                                     }
                                 />
                             </ListItem>

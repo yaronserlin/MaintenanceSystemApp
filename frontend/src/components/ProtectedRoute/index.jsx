@@ -2,8 +2,10 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import LoadingComponent from '../LoadingComponent/LoadingComponent';
+import { ToolProvider } from '../../contexts/ToolContext';
+import { FaultProvider } from '../../contexts/FaultContext';
 
+import LoadingComponent from '../LoadingComponent/LoadingComponent';
 /**
  * Wraps protected routes, redirecting unauthenticated users to login
  * and showing a loading state while auth is initializing.
@@ -20,7 +22,13 @@ const ProtectedRoute = ({ children }) => {
         return <Navigate to="/login" replace />;
     }
 
-    return children;
+    return (
+        <ToolProvider>
+            <FaultProvider>
+                {children}
+            </FaultProvider>
+        </ToolProvider>
+    )
 };
 
 export default ProtectedRoute;

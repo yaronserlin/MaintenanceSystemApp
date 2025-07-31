@@ -1,4 +1,4 @@
-// src/components/Cards/LoginCard.jsx
+// src/components/LoginComponent.jsx
 import React from 'react';
 
 import Container from '@mui/material/Container';

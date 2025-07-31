@@ -7,6 +7,9 @@ import {
     OutlinedInput,
     InputAdornment,
     IconButton,
+    Typography,
+    Select,
+    MenuItem
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
@@ -36,35 +39,86 @@ function createInputComponent(type, defaultLabel) {
 /**
  * A password field with visibility toggle built in.
  */
-const Password = forwardRef(({ label = 'Password', ...props }, ref) => {
+const Password = forwardRef(({ label = 'Password', helperText, error, required, ...props }, ref) => {
     const [show, setShow] = useState(false);
     const handleToggle = () => setShow((prev) => !prev);
-    
-        return (
-            <FormControl fullWidth variant="outlined">
-                <InputLabel htmlFor={props.id || props.name}>{label}</InputLabel>
-                <OutlinedInput
-                    id={props.id || props.name}
-                    inputRef={ref}
-                    type={show ? 'text' : 'password'}
-                    endAdornment={
-                        <InputAdornment position="end">
-                            <IconButton
-                                aria-label={show ? 'Hide password' : 'Show password'}
-                                onClick={handleToggle}
-                                edge="end"
-                            >
-                                {show ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                        </InputAdornment>
-                    }
-                    label={label}
-                    {...props}
-                />
-            </FormControl>
-        );
+
+    return (
+        <FormControl fullWidth variant="outlined" required={required} error={!!error}>
+            <InputLabel htmlFor={props.id || props.name}>{label}</InputLabel>
+            <OutlinedInput
+                id={props.id || props.name}
+                inputRef={ref}
+                type={show ? 'text' : 'password'}
+                error={!!error}
+                endAdornment={
+                    <InputAdornment position="end">
+                        <IconButton
+                            aria-label={show ? 'Hide password' : 'Show password'}
+                            onClick={handleToggle}
+                            edge="end"
+                        >
+                            {show ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                    </InputAdornment>
+                }
+                label={label}
+                {...props}
+            />
+            {/* If you want to show helper text or error messages, you can pass them via props */}
+            {error && (
+
+                <Typography variant="caption" color="error">
+                    {helperText}
+                </Typography>
+            )}
+        </FormControl>
+    );
 });
 Password.displayName = 'PasswordInput';
+
+/**
+ * A select input component with options.
+ * Uses MUI's Select and MenuItem components.
+ * You can pass an array of options as props.
+ * Example:
+ * ```jsx
+ * <SelectInput
+ *     label="Choose an option"
+ *    options={[
+ *        { value: 'option1', label: 'Option 1' },
+ *       { value: 'option2', label: 'Option 2' },
+ *   ]}
+ *   onChange={handleChange}
+ *  value={selectedValue}
+ * />
+ * 
+ */
+const select = forwardRef(({ label, options, helperText, error, ...props }, ref) => (
+    <FormControl fullWidth variant="outlined">
+        <InputLabel id={props.id || props.name}>{label}</InputLabel>
+        <Select
+            labelId={props.id || props.name}
+            inputRef={ref}
+            label={label}
+            error={!!error}
+            {...props}
+        >
+            {options.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                </MenuItem>
+            ))}
+        </Select>
+        {error && (
+
+            <Typography variant="caption" color="error">
+                {helperText}
+            </Typography>
+        )}
+    </FormControl>
+));
+select.displayName = 'SelectInput'; // Uncomment if you want to set a display name
 
 // Create each specialized input
 const Email = createInputComponent('email', 'Email');
@@ -79,6 +133,7 @@ const Input = {
     Text,
     Number,
     Url,
+    Select: select,
     // Number: createInputComponent('number', 'Number'),
     // Url:    createInputComponent('url',    'URL'),
 };

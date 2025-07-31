@@ -1,4 +1,4 @@
-// src/components/Cards/LoginCard.jsx
+// src/components/LoginComponent/LoginCard.jsx
 import React from 'react';
 import {
     Card,

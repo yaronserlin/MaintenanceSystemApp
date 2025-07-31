@@ -1,41 +1,44 @@
 // src/pages/ToolPage.jsx (updated)
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Typography, Button, CircularProgress, Alert, Box } from '@mui/material';
+import { Container, Typography, Button, Box, Tabs, Tab } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import toolsService from '../services/toolsService';
-import faultService from '../services/faultsService';
 import FaultList from '../components/Fault/FaultList/FaultList';
 import FaultDetailsDialog from '../components/Fault/FaultDetailsDialog/FaultDetailsDialog';
 import CreateFaultDialog from '../components/Fault/CreateFaultDialog/CreateFaultDialog';
 import LoadingComponent from '../components/LoadingComponent/LoadingComponent';
 import ErrorComponent from '../components/ErrorComponent/ErrorComponent';
+import { useTool } from '../contexts/ToolContext';
+import { useFault } from '../contexts/FaultContext';
+import TabPanel from '../components/TabPanel';
+
+function a11yProps(index) {
+    return {
+        id: `full-width-tab-${index}`,
+        'aria-controls': `full-width-tabpanel-${index}`,
+    };
+}
 
 export default function ToolPage() {
     const { id } = useParams();
     const { user } = useAuth();
+
+    const { tools, loading, error: toolError } = useTool();
     const [tool, setTool] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const { faults, error: faultError, createFault, deleteFault, closeFault } = useFault(id);
+
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [selectedFault, setSelectedFault] = useState(null);
+    const [value, setValue] = React.useState(0);
 
-    const fetchTool = () => {
-        setLoading(true);
-        toolsService
-            .getById(id)
-            .then((data) => setTool(data))
-            .catch((err) => {
-                console.error(err);
-                setError('Failed to load tool data');
-            })
-            .finally(() => setLoading(false));
+    const handleChange = (event, newValue) => {
+        setValue(newValue);
     };
 
     useEffect(() => {
-        fetchTool();
-    }, [id]);
+        setTool(tools?.find(t => t._id === id));
+    }, [id, tools, faults, toolError, faultError]);
 
     const handleFaultClick = (fault) => {
         setSelectedFault(fault);
@@ -50,50 +53,40 @@ export default function ToolPage() {
 
     const handleDeleteClick = async (fault) => {
         if (!window.confirm('Are you sure you want to delete this fault?')) return;
-        try {
-            await faultService.delete(fault._id);
-            fetchTool();
-        } catch (err) {
-            console.error(err);
-            alert('Failed to delete fault');
-        }
+        await deleteFault(fault._id);
     };
 
     const handleCloseFault = async (fault) => {
         if (!window.confirm('Mark this fault as closed?')) return;
-        try {
-            await faultService.close(fault._id);
-            fetchTool();
-        } catch (err) {
-            console.error(err);
-            alert('Failed to close fault');
-        }
+        await closeFault(fault._id);
     };
 
     const handleCreateSubmit = async (values) => {
         console.log('Creating fault with values:', values, user);
-
-        try {
-            await faultService.create({
-                ...values,
-                operator: user._id,
-            });
-            handleCloseAll();
-            fetchTool();
-        } catch (err) {
-            console.error(err);
-            alert('Failed to create fault');
+        if (!user) {
+            console.error('User not authenticated');
+            return;
         }
-    };
+        if (!tool) {
+            console.error('Tool not found');
+            return;
+        }
+        const data = {
+            ...values,
+            tool: tool._id,
+            operator: user.id,
+        };
+        console.log('Submitting fault creation:', data);
+        if (!data.description || !data.code) {
+            console.error('Description and code are required');
+            return;
+        }
 
-    const sortedFaults = tool?.faults
-        ? [...tool.faults].sort((a, b) => {
-            if (a.status !== b.status) {
-                return a.status === 'open' ? -1 : 1;
-            }
-            return new Date(a.createdAt) - new Date(b.createdAt);
+        await createFault({
+            ...data
         })
-        : [];
+        handleCloseAll();
+    };
 
     if (loading) {
         return (
@@ -101,9 +94,9 @@ export default function ToolPage() {
         );
     }
 
-    if (error) {
+    if (faultError || toolError) {
         return (
-            <ErrorComponent message={error} />
+            <ErrorComponent message={faultError || toolError} />
         );
     }
 
@@ -121,21 +114,31 @@ export default function ToolPage() {
             <Typography variant="subtitle1" color="text.secondary" gutterBottom>
                 Serial: {tool.serialNumber || tool.localSerialNumber}
             </Typography>
-            <Typography paragraph>{tool.description}</Typography>
+            <Typography variant="subtitle1">{tool.description}</Typography>
 
             <Box mb={2}>
                 <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
                     Create New Fault
                 </Button>
             </Box>
+            <Box>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                    <Tabs value={value} onChange={handleChange} aria-label="tabs for tool details" variant="fullWidth">
+                        <Tab label="Faults" {...a11yProps(0)} />
+                        <Tab label="Maintenance" disabled={true} {...a11yProps(1)} />
+                        <Tab label="Books" disabled={true} {...a11yProps(2)} />
+                    </Tabs>
+                </Box>
 
-            <Typography variant="h5" gutterBottom>Faults</Typography>
-            <FaultList
-                faults={sortedFaults}
-                onFaultClick={handleFaultClick}
-                onCloseFault={handleCloseFault}
-                onDeleteFault={handleDeleteClick}
-            />
+                <TabPanel value={value} index={0}>
+                    <FaultList
+                        faults={faults}
+                        onFaultClick={handleFaultClick}
+                        onCloseFault={handleCloseFault}
+                        onDeleteFault={handleDeleteClick}
+                    />
+                </TabPanel>
+            </Box>
 
             <FaultDetailsDialog open={detailDialogOpen} onClose={handleCloseAll} fault={selectedFault} />
             <CreateFaultDialog open={createDialogOpen} onClose={handleCloseAll} onSubmit={handleCreateSubmit} toolId={tool._id} />
