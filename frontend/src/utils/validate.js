@@ -43,6 +43,8 @@ export function validateEmail(email) {
  * @returns {string} error message or empty string
  */
 export function validatePassword(pwd) {
+    console.log("password validation called with:", pwd);
+
     let err = isRequired(pwd, 'Password');
     if (err) return err;
 
@@ -63,6 +65,32 @@ export function validatePassword(pwd) {
     // }
     return '';
 }
+
+export function validateName(name) {
+    let err = isRequired(name, 'Name');
+    if (err) return err;
+
+    // allow letters, spaces, hyphens, apostrophes
+    const pattern = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/;
+    return pattern.test(name)
+        ? ''
+        : 'Name can only contain letters, spaces, hyphens, and apostrophes.';
+}
+/**
+ * role can be: admin, operator,mechanic
+ * @param {*} role 
+ */
+export function validateRole(role) {
+    let err = isRequired(role, 'Role');
+    if (err) return err;
+
+    // allow only specific roles
+    const validRoles = ['admin', 'operator', 'mechanic'];
+    return validRoles.includes(role)
+        ? ''
+        : `Role must be one of: ${validRoles.join(', ')}.`;
+}
+
 
 /**
  * Generic min-length check for arbitrary fields.
