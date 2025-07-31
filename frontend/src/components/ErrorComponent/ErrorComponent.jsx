@@ -12,6 +12,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
  */
 export default function ErrorComponent({ message, onRetry }) {
     const text = message instanceof Error ? message.message : message;
+    console.error('ErrorComponent:', text);
 
     return (
         <Box
@@ -20,15 +21,10 @@ export default function ErrorComponent({ message, onRetry }) {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
                 p: 4,
                 width: '70%',
                 backgroundColor: 'background.paper',
                 borderRadius: 2,
-                boxShadow: 1,
                 textAlign: 'center',
             }}
         >

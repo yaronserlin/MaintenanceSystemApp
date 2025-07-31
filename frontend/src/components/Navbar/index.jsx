@@ -25,8 +25,8 @@ export default function Navbar({ pages = [], settings = [] }) {
         <AppBar position="sticky">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
-                    <MobileNav display={{ xs: 'flex', md: 'none' }} user={user} pages={navPages} />
-                    <DesktopNav display={{ xs: 'none', md: 'flex' }} user={user} pages={navPages} />
+                    <MobileNav display={{ xs: 'flex', sm: 'none' }} user={user} pages={navPages} />
+                    <DesktopNav display={{ xs: 'none', sm: 'flex' }} user={user} pages={navPages} />
                     <UserMenu user={user} settings={settings} />
                 </Toolbar>
             </Container>
