@@ -3,7 +3,7 @@ const Fault = require('../models/Fault');
 const Tool = require('../models/Tool');
 
 exports.getAllFaults = async (req, res) => {
-    const faults = await Fault.find().populate('tool operator');
+    const faults = await Fault.find().populate('operator');
     res.json(faults);
 };
 
