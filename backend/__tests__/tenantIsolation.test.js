@@ -50,6 +50,7 @@ describe('Multi-Tenant SaaS Isolation & Security Tests', () => {
                     name: 'Alice Admin',
                     email: 'alice@acme.com',
                     password: 'password123',
+                    agreeToTerms: true,
                     role: 'operator', // Attempt privilege override or tampering
                 });
 
@@ -70,6 +71,7 @@ describe('Multi-Tenant SaaS Isolation & Security Tests', () => {
                     name: 'Bob Admin',
                     email: 'bob@beta.com',
                     password: 'password123',
+                    agreeToTerms: true,
                 });
 
             expect(res.status).toBe(201);
@@ -87,6 +89,7 @@ describe('Multi-Tenant SaaS Isolation & Security Tests', () => {
                     name: 'Fake Alice',
                     email: 'alice@acme.com',
                     password: 'password123',
+                    agreeToTerms: true,
                 });
 
             expect(res.status).toBe(400);

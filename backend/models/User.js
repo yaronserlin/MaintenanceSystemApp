@@ -24,6 +24,8 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, required: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
     mustChangePassword: { type: Boolean, default: false },
+    termsAccepted: { type: Boolean, default: false },
+    termsAcceptedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 UserSchema.pre('save', function (next) {

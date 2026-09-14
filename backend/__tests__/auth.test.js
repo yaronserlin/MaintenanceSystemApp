@@ -59,12 +59,25 @@ describe('Auth Controller', () => {
             expect(res.body.message).toMatch(/password must be/i);
         });
 
+        it('rejects registration if terms of service and privacy policy are not accepted', async () => {
+            const res = await request(app).post('/api/auth/register').send({
+                companyName: 'Terms Co',
+                name: 'Valid Name',
+                email: uniqueEmail(),
+                password: 'password123',
+                agreeToTerms: false,
+            });
+            expect(res.status).toBe(400);
+            expect(res.body.message).toMatch(/terms of service and privacy policy/i);
+        });
+
         it('rejects duplicate slugs by generating a unique suffix', async () => {
             const first = await request(app).post('/api/auth/register').send({
                 companyName: 'Slug Collision Co',
                 name: 'First Admin',
                 email: uniqueEmail(),
                 password: 'password123',
+                agreeToTerms: true,
             });
             expect(first.status).toBe(201);
 
@@ -73,9 +86,11 @@ describe('Auth Controller', () => {
                 name: 'Second Admin',
                 email: uniqueEmail(),
                 password: 'password123',
+                agreeToTerms: true,
             });
             expect(second.status).toBe(201);
             expect(second.body.user.company.slug).not.toBe(first.body.user.company.slug);
+            expect(second.body.user.termsAccepted).toBe(true);
         });
 
         it('forces the creator role to admin regardless of request body', async () => {
@@ -84,10 +99,12 @@ describe('Auth Controller', () => {
                 name: 'Sneaky User',
                 email: uniqueEmail(),
                 password: 'password123',
+                agreeToTerms: true,
                 role: 'admin-override-attempt',
             });
             expect(res.status).toBe(201);
             expect(res.body.user.role).toBe('admin');
+            expect(res.body.user.termsAccepted).toBe(true);
         });
     });
 
@@ -317,6 +334,81 @@ describe('Auth Controller', () => {
                 password: 'newPassword1',
             });
             expect(loginRes.status).toBe(200);
+        });
+
+        it('requires terms approval during first login forced password change', async () => {
+            const { token: adminToken } = await registerCompanyAdmin(app);
+            const userEmail = uniqueEmail('worker');
+            const createRes = await request(app)
+                .post('/api/users')
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({
+                    name: 'Worker Bob',
+                    email: userEmail,
+                    password: 'tempPassword123',
+                });
+            expect(createRes.status).toBe(201);
+            expect(createRes.body.mustChangePassword).toBe(true);
+
+            // Log in as worker Bob
+            const loginRes = await request(app).post('/api/auth/login').send({
+                email: userEmail,
+                password: 'tempPassword123',
+            });
+            expect(loginRes.status).toBe(200);
+            expect(loginRes.body.user.mustChangePassword).toBe(true);
+            const workerToken = loginRes.body.token;
+
+            // Attempt without agreeing to terms
+            const noTermsRes = await request(app)
+                .post('/api/auth/me/change-password')
+                .set('Authorization', `Bearer ${workerToken}`)
+                .send({
+                    newPassword: 'myNewPersonalPass123',
+                    agreeToTerms: false,
+                });
+            expect(noTermsRes.status).toBe(400);
+            expect(noTermsRes.body.message).toMatch(/terms of service and privacy policy/i);
+        });
+
+        it('allows first login forced password change WITHOUT old password requirement when agreed to terms', async () => {
+            const { token: adminToken } = await registerCompanyAdmin(app);
+            const userEmail = uniqueEmail('worker');
+            await request(app)
+                .post('/api/users')
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({
+                    name: 'Worker Alice',
+                    email: userEmail,
+                    password: 'tempPassword123',
+                });
+
+            const loginRes = await request(app).post('/api/auth/login').send({
+                email: userEmail,
+                password: 'tempPassword123',
+            });
+            const workerToken = loginRes.body.token;
+
+            // Submit new password without currentPassword
+            const changeRes = await request(app)
+                .post('/api/auth/me/change-password')
+                .set('Authorization', `Bearer ${workerToken}`)
+                .send({
+                    newPassword: 'brandNewSecurePass123',
+                    agreeToTerms: true,
+                });
+            expect(changeRes.status).toBe(200);
+            expect(changeRes.body.mustChangePassword).toBe(false);
+            expect(changeRes.body.termsAccepted).toBe(true);
+
+            // Verify worker can log in with new password and mustChangePassword is false
+            const nextLogin = await request(app).post('/api/auth/login').send({
+                email: userEmail,
+                password: 'brandNewSecurePass123',
+            });
+            expect(nextLogin.status).toBe(200);
+            expect(nextLogin.body.user.mustChangePassword).toBe(false);
+            expect(nextLogin.body.user.termsAccepted).toBe(true);
         });
     });
 

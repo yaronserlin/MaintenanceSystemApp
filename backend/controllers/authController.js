@@ -87,7 +87,7 @@ exports.register = async (req, res, next) => {
             return res.status(400).json({ message: 'No data provided' });
         }
 
-        const { companyName, name, email, password } = req.body;
+        const { companyName, name, email, password, agreeToTerms, termsAccepted } = req.body;
 
         if (!companyName || typeof companyName !== 'string' || companyName.trim().length < 2) {
             return res.status(400).json({ message: 'Company name must be at least 2 characters' });
@@ -100,6 +100,9 @@ exports.register = async (req, res, next) => {
         }
         if (!password || typeof password !== 'string' || password.length < 6) {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        }
+        if (agreeToTerms !== true && termsAccepted !== true) {
+            return res.status(400).json({ message: 'You must agree to the Terms of Service and Privacy Policy to register' });
         }
 
         const normalizedEmail = email.trim().toLowerCase();
@@ -131,6 +134,8 @@ exports.register = async (req, res, next) => {
                 role: 'admin',
                 password: hashedPassword,
                 companyId: company._id,
+                termsAccepted: true,
+                termsAcceptedAt: new Date(),
             });
 
             const tokens = await generateTokens(user, company._id);
@@ -149,6 +154,7 @@ exports.register = async (req, res, next) => {
                     role: user.role,
                     avatar: user.avatar || null,
                     mustChangePassword: Boolean(user.mustChangePassword),
+                    termsAccepted: Boolean(user.termsAccepted),
                     company: {
                         id: company._id,
                         _id: company._id,
@@ -207,6 +213,7 @@ exports.login = async (req, res, next) => {
                 role: user.role,
                 avatar: user.avatar || null,
                 mustChangePassword: Boolean(user.mustChangePassword),
+                termsAccepted: Boolean(user.termsAccepted),
                 company: {
                     id: user.companyId._id,
                     _id: user.companyId._id,
@@ -314,6 +321,7 @@ exports.me = async (req, res, next) => {
             role: user.role,
             avatar: user.avatar || null,
             mustChangePassword: Boolean(user.mustChangePassword),
+            termsAccepted: Boolean(user.termsAccepted),
             company: user.companyId,
         });
     } catch (err) {
@@ -366,6 +374,7 @@ exports.updateProfile = async (req, res, next) => {
             role: currentUser.role,
             avatar: currentUser.avatar || null,
             mustChangePassword: Boolean(currentUser.mustChangePassword),
+            termsAccepted: Boolean(currentUser.termsAccepted),
         });
     } catch (err) {
         next(err);
@@ -407,7 +416,7 @@ exports.uploadAvatar = async (req, res, next) => {
 // Change password
 exports.changePassword = async (req, res, next) => {
     try {
-        const { currentPassword, newPassword } = req.body;
+        const { currentPassword, newPassword, agreeToTerms, termsAccepted } = req.body;
         const user = await User.findById(req.user.userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -420,11 +429,22 @@ exports.changePassword = async (req, res, next) => {
             return res.status(400).json({ message: 'New password must be at least 6 characters' });
         }
 
-        // If user is not flagged for mustChangePassword, or if currentPassword was provided, verify it.
-        if (!user.mustChangePassword || currentPassword) {
-            if (!currentPassword || typeof currentPassword !== 'string') {
-                return res.status(400).json({ message: 'Current and new password are required' });
+        if (user.mustChangePassword) {
+            // First-time login forced password change requires accepting terms if not yet accepted
+            if (!user.termsAccepted && agreeToTerms !== true && termsAccepted !== true) {
+                return res.status(400).json({ message: 'You must agree to the Terms of Service and Privacy Policy to continue' });
             }
+
+            // Old password is NOT required during first-time forced password change.
+            // If currentPassword was provided from the login page, verify it if present.
+            if (currentPassword && typeof currentPassword === 'string') {
+                const match = await bcrypt.compare(currentPassword, user.password);
+                if (!match) {
+                    return res.status(400).json({ message: 'Current password incorrect' });
+                }
+            }
+        } else {
+            // Regular password change requires current password verification
             const match = await bcrypt.compare(currentPassword, user.password);
             if (!match) {
                 return res.status(400).json({ message: 'Current password incorrect' });
@@ -433,12 +453,20 @@ exports.changePassword = async (req, res, next) => {
 
         user.password = await bcrypt.hash(newPassword, 10);
         user.mustChangePassword = false;
+        if (agreeToTerms === true || termsAccepted === true || !user.termsAccepted) {
+            user.termsAccepted = true;
+            user.termsAcceptedAt = user.termsAcceptedAt || new Date();
+        }
         await user.save();
 
         // Invalidate all active refresh tokens for this user across all sessions
         await RefreshToken.updateMany({ userId: user._id }, { isRevoked: true });
 
-        res.json({ message: 'Password changed successfully', mustChangePassword: false });
+        res.json({
+            message: 'Password changed successfully',
+            mustChangePassword: false,
+            termsAccepted: Boolean(user.termsAccepted),
+        });
     } catch (err) {
         next(err);
     }
