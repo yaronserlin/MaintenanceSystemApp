@@ -376,8 +376,10 @@ export default function EquipmentPage() {
                 open={createDialogOpen}
                 onClose={handleCloseAll}
                 onSubmit={handleCreateSubmit}
-                equipmentId={tool._id}
-                toolId={tool._id}
+                equipmentId={tool?._id}
+                toolId={tool?._id}
+                equipment={tool}
+                lockEquipment={true}
             />
 
             <CloseFaultDialog

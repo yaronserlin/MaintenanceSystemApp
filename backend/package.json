@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "defaultLanguage": "en",
   "scripts": {
+    "build": "node --check app.js",
     "start": "node app.js",
     "dev": "nodemon app.js",
     "seed": "node seeders/seeder.js",

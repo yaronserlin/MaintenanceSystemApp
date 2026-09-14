@@ -18,6 +18,7 @@ import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import LockIcon from '@mui/icons-material/Lock';
 import { useTool } from '../../../contexts/ToolContext';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -101,7 +102,17 @@ function FileThumbnailPreview({ file, onRemove }) {
 /**
  * Shared form fields for fault forms.
  */
-function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools = [], isEdit = false, toolError = '' }) {
+function FaultFormFields({
+    values,
+    onChange,
+    onFilesAdded,
+    onRemoveFile,
+    tools = [],
+    equipment,
+    isEdit = false,
+    toolError = '',
+    lockEquipment = false,
+}) {
     const { user } = useAuth();
     const isOperator = user?.role === 'operator';
     const [isDragging, setIsDragging] = useState(false);
@@ -135,8 +146,12 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
                     name="tool"
                     value={values.tool || ''}
                     onChange={onChange}
+                    disabled={lockEquipment}
                     displayEmpty
-                    inputProps={{ 'aria-label': 'Select Equipment' }}
+                    inputProps={{
+                        'aria-label': 'Select Equipment',
+                        ...(lockEquipment && { readOnly: true }),
+                    }}
                     renderValue={(selected) => {
                         if (!selected) {
                             return (
@@ -145,10 +160,26 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
                                 </Typography>
                             );
                         }
-                        const found = tools.find(t => (t._id || t.id) === selected);
+                        const found = (equipment && (equipment._id === selected || equipment.id === selected))
+                            ? equipment
+                            : tools.find(t => (t._id || t.id) === selected);
                         return found
                             ? `${found.name} ${found.localSerialNumber ? `(${found.localSerialNumber})` : (found.serialNumber ? `(${found.serialNumber})` : '')}`
                             : selected;
+                    }}
+                    sx={{
+                        ...(lockEquipment && {
+                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                            '& .MuiSelect-select.Mui-disabled': {
+                                WebkitTextFillColor: 'inherit',
+                                color: 'text.primary',
+                                fontWeight: 600,
+                                cursor: 'not-allowed',
+                            },
+                            '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'divider',
+                            },
+                        }),
                     }}
                 >
                     <MenuItem value="" disabled>
@@ -162,6 +193,11 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
                         </MenuItem>
                     ))}
                 </Select>
+                {lockEquipment && (
+                    <FormHelperText sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, color: 'text.secondary', fontWeight: 500 }}>
+                        <LockIcon sx={{ fontSize: 14 }} /> Equipment is locked for this machine report
+                    </FormHelperText>
+                )}
                 {toolError && <FormHelperText error>{toolError}</FormHelperText>}
             </FormControl>
 
@@ -312,8 +348,16 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
 /**
  * Form for creating a new Fault.
  */
-export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'create-fault-form', hideSubmitButton = false }) {
-    const activeEquipmentId = equipmentId || toolId;
+export function CreateFaultForm({
+    onSubmit,
+    toolId,
+    equipmentId,
+    equipment,
+    lockEquipment = Boolean(equipmentId || toolId || equipment),
+    formId = 'create-fault-form',
+    hideSubmitButton = false,
+}) {
+    const activeEquipmentId = equipment?._id || equipment?.id || equipmentId || toolId;
     const { tools = [] } = useTool();
     const [values, setValues] = useState({
         tool: activeEquipmentId || '',
@@ -381,7 +425,9 @@ export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'creat
                 onFilesAdded={handleFilesAdded}
                 onRemoveFile={handleRemoveFile}
                 tools={tools}
+                equipment={equipment}
                 toolError={toolError}
+                lockEquipment={lockEquipment}
             />
 
             {!hideSubmitButton && (
