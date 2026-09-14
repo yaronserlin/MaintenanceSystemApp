@@ -30,6 +30,7 @@ import CloseIcon from '@mui/icons-material/Close';
 
 import { useAuth } from '../../../contexts/AuthContext';
 import { CreateUserForm } from '../UserForms/UserForms';
+import { formatUserName } from '../../../utils/formatUtils';
 import LoadingComponent from '../../LoadingComponent/LoadingComponent';
 import ErrorComponent from '../../ErrorComponent/ErrorComponent';
 import DialogComponent from '../../DialogComponent';
@@ -227,7 +228,7 @@ export default function UserPanel({
                                         <Box sx={{ minWidth: 0, mr: 1 }}>
                                             <Box display="flex" alignItems="center" gap={0.75} flexWrap="wrap">
                                                 <Typography variant="body2" fontWeight={700} noWrap>
-                                                    {u.name}
+                                                    {formatUserName(u.name)}
                                                 </Typography>
                                                 {isSelf && (
                                                     <Chip
@@ -372,7 +373,7 @@ export default function UserPanel({
                                         <TableCell>
                                             <Box display="flex" alignItems="center" gap={1}>
                                                 <Typography variant="body2" fontWeight={600}>
-                                                    {u.name}
+                                                    {formatUserName(u.name)}
                                                 </Typography>
                                                 {isSelf && (
                                                     <Chip
@@ -494,7 +495,7 @@ export default function UserPanel({
             >
                 <Typography mb={2}>
                     Are you sure you want to permanently delete{' '}
-                    <strong>{dialog.user?.name}</strong> ({dialog.user?.email})?
+                    <strong>{formatUserName(dialog.user?.name)}</strong> ({dialog.user?.email})?
                 </Typography>
                 <Box display="flex" justifyContent="flex-end" gap={1}>
                     <Button onClick={closeDialog} variant="outlined">Cancel</Button>

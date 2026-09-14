@@ -30,8 +30,9 @@ function uniqueEmail(prefix = 'user') {
 // Registers a brand new company + admin user via the public API and returns
 // the token/cookie/ids needed to act as that admin in further requests.
 async function registerCompanyAdmin(app, overrides = {}) {
+    counter += 1;
     const payload = {
-        companyName: overrides.companyName || `Company ${Date.now()}${counter}`,
+        companyName: overrides.companyName || `Company ${Date.now()}_${counter}_${Math.random().toString(36).substring(2, 7)}`,
         name: overrides.name || 'Admin User',
         email: overrides.email || uniqueEmail('admin'),
         password: overrides.password || 'password123',
@@ -40,7 +41,10 @@ async function registerCompanyAdmin(app, overrides = {}) {
     return {
         res,
         token: res.body.token,
+        accessToken: res.body.accessToken,
+        refreshToken: res.body.refreshToken,
         cookie: res.headers['set-cookie'] ? res.headers['set-cookie'][0] : undefined,
+        cookies: res.headers['set-cookie'],
         userId: res.body.user && res.body.user._id,
         companyId: res.body.user && res.body.user.company && res.body.user.company._id,
         email: payload.email,

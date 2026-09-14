@@ -319,4 +319,114 @@ describe('Auth Controller', () => {
             expect(loginRes.status).toBe(200);
         });
     });
+
+    describe('POST /api/auth/refresh', () => {
+        it('rejects a request with no refresh token provided', async () => {
+            const res = await request(app).post('/api/auth/refresh').send({});
+            expect(res.status).toBe(401);
+            expect(res.body.message).toMatch(/refresh token is required/i);
+        });
+
+        it('rejects an invalid or tampered refresh token', async () => {
+            const res = await request(app)
+                .post('/api/auth/refresh')
+                .send({ refreshToken: 'invalid.token.signature' });
+            expect(res.status).toBe(401);
+            expect(res.body.message).toMatch(/invalid or expired/i);
+        });
+
+        it('refreshes token successfully via request body and rotates refresh token', async () => {
+            const { refreshToken: initialRefreshToken } = await registerCompanyAdmin(app);
+            expect(initialRefreshToken).toBeDefined();
+
+            const refreshRes = await request(app)
+                .post('/api/auth/refresh')
+                .send({ refreshToken: initialRefreshToken });
+
+            expect(refreshRes.status).toBe(200);
+            expect(refreshRes.body.accessToken).toBeDefined();
+            expect(refreshRes.body.token).toBeDefined();
+            expect(refreshRes.body.refreshToken).toBeDefined();
+            expect(refreshRes.body.refreshToken).not.toBe(initialRefreshToken);
+
+            // New access token works to access protected route
+            const meRes = await request(app)
+                .get('/api/auth/me')
+                .set('Authorization', `Bearer ${refreshRes.body.accessToken}`);
+            expect(meRes.status).toBe(200);
+        });
+
+        it('refreshes token successfully via cookie', async () => {
+            const { cookies } = await registerCompanyAdmin(app);
+            expect(cookies).toBeDefined();
+
+            // Find the refreshToken cookie
+            const refreshCookie = cookies.find(c => c.startsWith('refreshToken='));
+            expect(refreshCookie).toBeDefined();
+
+            const refreshRes = await request(app)
+                .post('/api/auth/refresh')
+                .set('Cookie', [refreshCookie]);
+
+            expect(refreshRes.status).toBe(200);
+            expect(refreshRes.body.accessToken).toBeDefined();
+            expect(refreshRes.body.refreshToken).toBeDefined();
+        });
+
+        it('enforces rotation: cannot reuse an already rotated refresh token', async () => {
+            const { refreshToken: initialRefreshToken } = await registerCompanyAdmin(app);
+
+            // First refresh succeeds and rotates
+            const firstRefresh = await request(app)
+                .post('/api/auth/refresh')
+                .send({ refreshToken: initialRefreshToken });
+            expect(firstRefresh.status).toBe(200);
+
+            // Second attempt to use initialRefreshToken triggers reuse detection
+            const reuseAttempt = await request(app)
+                .post('/api/auth/refresh')
+                .send({ refreshToken: initialRefreshToken });
+            expect(reuseAttempt.status).toBe(403);
+            expect(reuseAttempt.body.code).toBe('TOKEN_REUSE_DETECTED');
+
+            // Even the rotated token from the first refresh should now be revoked due to family invalidation
+            const attemptWithRotated = await request(app)
+                .post('/api/auth/refresh')
+                .send({ refreshToken: firstRefresh.body.refreshToken });
+            expect(attemptWithRotated.status).toBe(403);
+            expect(attemptWithRotated.body.code).toBe('TOKEN_REUSE_DETECTED');
+        });
+
+        it('revokes refresh token on logout', async () => {
+            const { refreshToken } = await registerCompanyAdmin(app);
+
+            const logoutRes = await request(app)
+                .post('/api/auth/logout')
+                .send({ refreshToken });
+            expect(logoutRes.status).toBe(200);
+
+            // Trying to refresh after logout should fail
+            const refreshRes = await request(app)
+                .post('/api/auth/refresh')
+                .send({ refreshToken });
+            expect(refreshRes.status).toBe(403);
+        });
+
+        it('revokes all active refresh tokens on password change', async () => {
+            const email = uniqueEmail();
+            const { token, refreshToken } = await registerCompanyAdmin(app, { email, password: 'oldPassword123' });
+
+            const changeRes = await request(app)
+                .post('/api/auth/me/change-password')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ currentPassword: 'oldPassword123', newPassword: 'newPassword123' });
+            expect(changeRes.status).toBe(200);
+
+            // Refresh token issued before password change should now be revoked
+            const refreshRes = await request(app)
+                .post('/api/auth/refresh')
+                .send({ refreshToken });
+            expect(refreshRes.status).toBe(403);
+        });
+    });
 });

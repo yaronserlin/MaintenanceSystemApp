@@ -3,9 +3,9 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import BuildCircleIcon from '@mui/icons-material/BuildCircle';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
+import Logo from '../Logo/Logo';
 
 const PAGE_TO_PATH = (page) => {
     const lower = page.toLowerCase();
@@ -24,68 +24,12 @@ export default function DesktopNav({ display, user, pages }) {
     return (
         <>
             {/* ── Brand Logo ─────────────────────────────────── */}
-            <Box
-                component={RouterLink}
-                to="/dashboard"
-                sx={{
-                    display: { xs: 'none', sm: 'flex' },
-                    alignItems: 'center',
-                    gap: 1.25,
-                    mr: 4,
-                    textDecoration: 'none',
-                    color: 'text.primary',
-                    flexShrink: 0,
-                    '&:focus-visible': {
-                        outline: '2px solid',
-                        outlineColor: 'primary.main',
-                        borderRadius: 1,
-                    },
-                }}
-            >
-                {/* Blue logo badge */}
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 36,
-                        height: 36,
-                        borderRadius: 1.5,
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText',
-                        flexShrink: 0,
-                    }}
-                >
-                    <BuildCircleIcon sx={{ fontSize: 20 }} />
-                </Box>
-
-                <Box>
-                    <Typography
-                        variant="subtitle2"
-                        sx={{
-                            fontWeight: 800,
-                            letterSpacing: '-0.01em',
-                            lineHeight: 1.1,
-                            color: 'text.primary',
-                            fontSize: '0.875rem',
-                        }}
-                    >
-                        MAINTENANCE
-                    </Typography>
-                    <Typography
-                        variant="caption"
-                        sx={{
-                            fontWeight: 600,
-                            letterSpacing: '0.06em',
-                            fontSize: '0.6rem',
-                            color: 'text.secondary',
-                            display: 'block',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        {user?.role === 'operator' ? 'Operator Portal' : 'Ops Manager'}
-                    </Typography>
-                </Box>
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, mr: 4, flexShrink: 0 }}>
+                <Logo
+                    size={36}
+                    subtitle={user?.role === 'operator' ? 'Operator Portal' : 'Ops Manager'}
+                    to="/dashboard"
+                />
             </Box>
 
             {/* ── Nav Links ──────────────────────────────────── */}

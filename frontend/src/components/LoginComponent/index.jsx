@@ -2,9 +2,9 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import BuildCircleIcon from '@mui/icons-material/BuildCircle';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LoginCard from './LoginCard';
+import Logo from '../Logo/Logo';
 
 const FEATURES = [
     'Track equipment faults and repairs',
@@ -50,52 +50,14 @@ export default function LoginComponent() {
                 }}
             >
                 {/* Logo */}
-                <Box
-                    display="flex"
-                    alignItems="center"
-                    gap={1.5}
-                    mb={{ xs: 0, md: 6 }}
-                    sx={{ position: 'relative' }}
-                >
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: { xs: 34, md: 44 },
-                            height: { xs: 34, md: 44 },
-                            borderRadius: 2,
-                            bgcolor: '#2563EB',
-                        }}
-                    >
-                        <BuildCircleIcon sx={{ fontSize: { xs: 20, md: 26 }, color: '#FFFFFF' }} />
-                    </Box>
-                    <Box sx={{ display: { xs: 'block', md: 'block' } }}>
-                        <Typography
-                            variant="subtitle1"
-                            sx={{
-                                fontWeight: 800,
-                                letterSpacing: '-0.01em',
-                                color: '#FFFFFF',
-                                lineHeight: 1.1,
-                                fontSize: { xs: '0.9rem', md: '1rem' },
-                            }}
-                        >
-                            MAINTENANCE
-                        </Typography>
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                color: 'rgba(255,255,255,0.6)',
-                                letterSpacing: '0.08em',
-                                fontSize: '0.6rem',
-                                textTransform: 'uppercase',
-                                fontWeight: 600,
-                            }}
-                        >
-                            Ops Manager
-                        </Typography>
-                    </Box>
+                <Box mb={{ xs: 0, md: 6 }} sx={{ position: 'relative' }}>
+                    <Logo
+                        size={44}
+                        textColor="#FFFFFF"
+                        subtitleColor="rgba(255,255,255,0.7)"
+                        subtitle="Ops Manager"
+                        to={null}
+                    />
                 </Box>
 
                 {/* Hero Text — desktop only */}

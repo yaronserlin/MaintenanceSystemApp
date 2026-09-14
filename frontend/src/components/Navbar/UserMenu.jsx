@@ -15,6 +15,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useNavigate } from 'react-router-dom';
 import { getMediaUrl } from '../../utils/mediaUtils';
+import { formatUserName, getUserInitials } from '../../utils/formatUtils';
 
 const ROLE_CONFIG = {
     admin:    { color: 'error',   label: 'Admin',    bgToken: 'error.main'   },
@@ -31,8 +32,10 @@ export default function UserMenu({ user }) {
 
     if (!user) return null;
 
-    const avatarSrc = getMediaUrl(user.avatar || user.avatarUrl);
-    const role      = ROLE_CONFIG[user.role] || ROLE_CONFIG.operator;
+    const avatarSrc   = getMediaUrl(user.avatar || user.avatarUrl);
+    const role        = ROLE_CONFIG[user.role] || ROLE_CONFIG.operator;
+    const displayName = formatUserName(user.name) || 'User';
+    const initials    = getUserInitials(user.name);
 
     const goTo = (path) => { handleClose(); navigate(path); };
 
@@ -55,7 +58,7 @@ export default function UserMenu({ user }) {
                     }}
                 >
                     <Avatar
-                        alt={user.name}
+                        alt={displayName}
                         src={avatarSrc}
                         sx={{
                             width: 32,
@@ -66,7 +69,7 @@ export default function UserMenu({ user }) {
                             fontSize: '0.8rem',
                         }}
                     >
-                        {user.name?.charAt(0)?.toUpperCase()}
+                        {initials}
                     </Avatar>
                 </IconButton>
             </Tooltip>
@@ -93,7 +96,7 @@ export default function UserMenu({ user }) {
                     <Box display="flex" alignItems="center" gap={1.25} mb={0.75}>
                         <Avatar
                             src={avatarSrc}
-                            alt={user.name}
+                            alt={displayName}
                             sx={{
                                 width: 36,
                                 height: 36,
@@ -103,11 +106,11 @@ export default function UserMenu({ user }) {
                                 fontSize: '0.9rem',
                             }}
                         >
-                            {user.name?.charAt(0)?.toUpperCase()}
+                            {initials}
                         </Avatar>
                         <Box sx={{ minWidth: 0 }}>
                             <Typography variant="body2" fontWeight={700} noWrap>
-                                {user.name || 'User'}
+                                {displayName}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" display="block" noWrap>
                                 {user.email}

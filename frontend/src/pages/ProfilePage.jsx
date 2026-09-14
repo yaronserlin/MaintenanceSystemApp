@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import faultService from '../services/faultsService';
 import { getMediaUrl } from '../utils/mediaUtils';
+import { formatUserName, getUserInitials } from '../utils/formatUtils';
 import LoadingComponent from '../components/LoadingComponent/LoadingComponent';
 
 const ROLE_COLOR = { admin: 'error', mechanic: 'primary', operator: 'success' };
@@ -101,7 +102,7 @@ export default function ProfilePage() {
                     <Box display="flex" alignItems="center" gap={2.5}>
                         <Avatar
                             src={avatarSrc}
-                            alt={user?.name}
+                            alt={formatUserName(user?.name) || 'User'}
                             sx={{
                                 width: 72,
                                 height: 72,
@@ -111,12 +112,12 @@ export default function ProfilePage() {
                                 fontWeight: 800,
                             }}
                         >
-                            {user?.name?.charAt(0) || 'U'}
+                            {getUserInitials(user?.name)}
                         </Avatar>
                         <Box>
                             <Box display="flex" alignItems="center" gap={1.25} mb={0.5}>
                                 <Typography variant="h5" fontWeight={800} letterSpacing="-0.02em">
-                                    {user?.name || 'User'}
+                                    {formatUserName(user?.name) || 'User'}
                                 </Typography>
                                 <Chip
                                     label={userRole.toUpperCase()}
