@@ -24,6 +24,19 @@ const userService = {
      * @returns {Promise} Axios response
      */
     changePassword: (payload) => apiClient.post('/auth/me/change-password', payload),
+
+    /**
+     * Upload an avatar image for the current user
+     * @param {File} file
+     * @returns {Promise} Axios response with updated user data
+     */
+    uploadAvatar: (file) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return apiClient.post('/auth/me/avatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
 };
 
 export default userService;

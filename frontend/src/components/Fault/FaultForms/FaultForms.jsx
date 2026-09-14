@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, Button, Typography } from '@mui/material';
+import { Box, TextField, Button, Chip } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useTool } from '../../../contexts/ToolContext';
@@ -19,12 +19,12 @@ const VisuallyHiddenInput = styled('input')({
 /**
  * Shared form fields for fault forms.
  */
-function FaultFormFields({ values, onChange, tools = [] }) {
+function FaultFormFields({ values, onChange, onRemoveFile, tools = [] }) {
     return (
         <Box display="flex" flexDirection="column" gap={2}>
-            {/* Tool selector */}
+            {/* Equipment selector */}
             <TextField
-                label="Tool"
+                label="Equipment"
                 name="tool"
                 select
                 SelectProps={{ native: true }}
@@ -32,7 +32,7 @@ function FaultFormFields({ values, onChange, tools = [] }) {
                 onChange={onChange}
             >
                 <option value="" disabled>
-                    Select a tool
+                    Select equipment
                 </option>
                 {tools.map(tool => (
                     <option key={tool._id} value={tool._id}>
@@ -43,11 +43,23 @@ function FaultFormFields({ values, onChange, tools = [] }) {
 
             {/* Fault code */}
             <TextField
-                label="Code"
+                label="Fault Code"
                 name="code"
                 required
                 value={values.code}
                 onChange={onChange}
+                placeholder="e.g. HYD-01 or ENG-104"
+            />
+
+            {/* Engine Hours */}
+            <TextField
+                label="Engine Hours (optional)"
+                name="engineHours"
+                type="number"
+                inputProps={{ min: 0, step: 'any' }}
+                value={values.engineHours}
+                onChange={onChange}
+                helperText="Current operating hours of the equipment"
             />
 
             {/* Detailed description */}
@@ -56,37 +68,47 @@ function FaultFormFields({ values, onChange, tools = [] }) {
                 name="description"
                 required
                 multiline
-                rows={4}
+                rows={3}
                 value={values.description}
                 onChange={onChange}
             />
 
-            <Button
-                component="label"
-                variant="outlined"
-                startIcon={<CloudUploadIcon />}
-            >
-                {values.files && values.files.length > 0
-                    ? `${values.files.length} file(s) selected`
-                    : 'Upload Photos'}
-                <VisuallyHiddenInput
-                    type="file"
-                    id="photosFiles"
-                    name="photosFiles"
-                    accept="image/*"
-                    onChange={onChange}
-                    multiple
-                />
-            </Button>
+            {/* Photo Upload via File Picker */}
+            <Box>
+                <Button
+                    component="label"
+                    variant="outlined"
+                    startIcon={<CloudUploadIcon />}
+                    fullWidth
+                >
+                    {values.files && values.files.length > 0
+                        ? `Add More Photos (${values.files.length} selected)`
+                        : 'Select Photos to Upload'}
+                    <VisuallyHiddenInput
+                        type="file"
+                        id="photosFiles"
+                        name="photosFiles"
+                        accept="image/*"
+                        onChange={onChange}
+                        multiple
+                    />
+                </Button>
 
-            {/* Photo URLs, comma-separated */}
-            <TextField
-                label="Photo URLs (optional, comma-separated)"
-                name="photoUrls"
-                helperText="Enter full URLs separated by commas"
-                value={values.photoUrls}
-                onChange={onChange}
-            />
+                {values.files && values.files.length > 0 && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.5 }}>
+                        {values.files.map((file, idx) => (
+                            <Chip
+                                key={idx}
+                                label={file.name}
+                                onDelete={() => onRemoveFile?.(idx)}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                            />
+                        ))}
+                    </Box>
+                )}
+            </Box>
 
             {/* Status selector */}
             <TextField
@@ -119,13 +141,14 @@ function FaultFormFields({ values, onChange, tools = [] }) {
 /**
  * Form for creating a new Fault.
  */
-export function CreateFaultForm({ onSubmit, toolId }) {
+export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'create-fault-form', hideSubmitButton = false }) {
+    const activeEquipmentId = equipmentId || toolId;
     const { tools = [] } = useTool();
     const [values, setValues] = useState({
-        tool: toolId || (tools.length > 0 ? tools[0]._id : ''),
+        tool: activeEquipmentId || (tools.length > 0 ? tools[0]._id : ''),
         code: '',
+        engineHours: '',
         description: '',
-        photoUrls: '',
         files: [],
         status: 'open',
         closedAt: '',
@@ -133,33 +156,39 @@ export function CreateFaultForm({ onSubmit, toolId }) {
 
     useEffect(() => {
         if (!values.tool && tools.length > 0) {
-            setValues(prev => ({ ...prev, tool: toolId || tools[0]._id }));
+            setValues(prev => ({ ...prev, tool: activeEquipmentId || tools[0]._id }));
         }
-    }, [tools, toolId, values.tool]);
+    }, [tools, activeEquipmentId, values.tool]);
 
     const handleChange = (e) => {
         if (e.target.type === 'file') {
             const selectedFiles = Array.from(e.target.files || []);
-            setValues(prev => ({ ...prev, files: selectedFiles }));
+            setValues(prev => ({
+                ...prev,
+                files: [...prev.files, ...selectedFiles],
+            }));
         } else {
             const { name, value } = e.target;
             setValues(prev => ({ ...prev, [name]: value }));
         }
     };
 
+    const handleRemoveFile = (indexToRemove) => {
+        setValues(prev => ({
+            ...prev,
+            files: prev.files.filter((_, idx) => idx !== indexToRemove),
+        }));
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!values.description.trim()) return;
 
-        const photosFromUrls = values.photoUrls
-            ? values.photoUrls.split(',').map(s => s.trim()).filter(Boolean)
-            : [];
-
         onSubmit({
             tool: values.tool,
             code: values.code,
+            engineHours: values.engineHours ? parseFloat(values.engineHours) : undefined,
             description: values.description,
-            photos: photosFromUrls,
             files: values.files,
             status: values.status,
             closedAt: values.status === 'closed' && values.closedAt
@@ -169,13 +198,20 @@ export function CreateFaultForm({ onSubmit, toolId }) {
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit} p={2} maxWidth={600}>
-            <FaultFormFields values={values} onChange={handleChange} tools={tools} />
-            <Box mt={3}>
-                <Button type="submit" variant="contained">
-                    Create Fault
-                </Button>
-            </Box>
+        <Box component="form" id={formId} onSubmit={handleSubmit} p={1} maxWidth={600}>
+            <FaultFormFields
+                values={values}
+                onChange={handleChange}
+                onRemoveFile={handleRemoveFile}
+                tools={tools}
+            />
+            {!hideSubmitButton && (
+                <Box mt={3}>
+                    <Button type="submit" variant="contained">
+                        Create
+                    </Button>
+                </Box>
+            )}
         </Box>
     );
 }

@@ -120,3 +120,8 @@ export function UpdateToolForm({ initialData = {}, onSubmit }) {
         </Box>
     );
 }
+
+// Equipment aliases
+export const EquipmentFormFields = ToolFormFields;
+export const CreateEquipmentForm = CreateToolForm;
+export const UpdateEquipmentForm = UpdateToolForm;

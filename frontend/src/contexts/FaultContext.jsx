@@ -77,15 +77,28 @@ export function FaultProvider({ children }) {
         }
     }, [notify]);
 
-    const closeFault = useCallback(async (id) => {
+    const closeFault = useCallback(async (id, data = {}) => {
         try {
-            const updated = await retry(() => faultService.close(id));
+            const updated = await retry(() => faultService.close(id, data));
             setFaults(prev => prev.map(f => f._id === id ? updated : f));
-            notify.success('Fault closed');
+            notify.success('Fault closed successfully');
             return updated;
         } catch (err) {
             setError(err);
             notify.error('Failed to close fault');
+            throw err;
+        }
+    }, [notify]);
+
+    const reopenFault = useCallback(async (id) => {
+        try {
+            const updated = await retry(() => faultService.reopen(id));
+            setFaults(prev => prev.map(f => f._id === id ? updated : f));
+            notify.success('Fault reopened');
+            return updated;
+        } catch (err) {
+            setError(err);
+            notify.error('Failed to reopen fault');
             throw err;
         }
     }, [notify]);
@@ -99,7 +112,8 @@ export function FaultProvider({ children }) {
         updateFault,
         deleteFault,
         closeFault,
-    }), [faults, loading, error, fetchFaults, createFault, updateFault, deleteFault, closeFault]);
+        reopenFault,
+    }), [faults, loading, error, fetchFaults, createFault, updateFault, deleteFault, closeFault, reopenFault]);
 
     return <FaultContext.Provider value={value}>{children}</FaultContext.Provider>;
 }

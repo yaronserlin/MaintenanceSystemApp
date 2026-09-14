@@ -32,7 +32,32 @@ const adminService = {
     },
 
 
-    // ── Tools ────────────────────────────────────────────────────────────────
+    // ── Equipment ────────────────────────────────────────────────────────────
+
+    /** GET /api/admin/equipment */
+    getEquipment: async () => {
+        const res = await apiClient.get('/admin/equipment');
+        return res.data;
+    },
+
+    /** POST /api/admin/equipment */
+    createEquipment: async (data) => {
+        const res = await apiClient.post('/admin/equipment', data);
+        return res.data;
+    },
+
+    /** PUT /api/admin/equipment/:id */
+    updateEquipment: async (id, updates) => {
+        const res = await apiClient.put(`/admin/equipment/${id}`, updates);
+        return res.data;
+    },
+
+    /** DELETE /api/admin/equipment/:id */
+    deleteEquipment: async (id) => {
+        await apiClient.delete(`/admin/equipment/${id}`);
+    },
+
+    // ── Tools (backward-compatible aliases) ───────────────────────────────────
 
     /** GET  /api/admin/tools */
     getTools: async () => {

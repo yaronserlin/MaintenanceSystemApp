@@ -8,6 +8,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import { useNavigate } from 'react-router-dom';
+import { getMediaUrl } from '../../utils/mediaUtils';
 
 export default function UserMenu({ user, settings = [] }) {
     const [anchorEl, setAnchorEl] = React.useState(null);
@@ -18,11 +19,15 @@ export default function UserMenu({ user, settings = [] }) {
 
     if (!user) return null;
 
+    const avatarSrc = getMediaUrl(user.avatar || user.avatarUrl);
+
     return (
         <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Open settings">
                 <IconButton onClick={handleOpen} sx={{ p: 0 }}>
-                    <Avatar alt={user.name} src={user.avatarUrl} />
+                    <Avatar alt={user.name} src={avatarSrc}>
+                        {user.name?.charAt(0)}
+                    </Avatar>
                 </IconButton>
             </Tooltip>
             <Menu

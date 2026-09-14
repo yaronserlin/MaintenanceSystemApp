@@ -9,6 +9,7 @@ const {
     getFaultById,
     createFault,
     closeFault,
+    reopenFault,
     deleteFault,
 } = require('../controllers/faultController');
 
@@ -18,8 +19,10 @@ router.get('/', getAllFaults);
 router.get('/:id', validateObjectId('id'), getFaultById);
 router.post('/', upload.array('photos', 5), createFault);
 
-// Role check: only mechanics or admins can close or delete faults
+// Role check: only mechanics or admins can close, reopen, or delete faults
 router.patch('/:id/close', validateObjectId('id'), ensureMechanicOrAdmin, closeFault);
+router.put('/:id/reopen', validateObjectId('id'), ensureMechanicOrAdmin, reopenFault);
+router.patch('/:id/reopen', validateObjectId('id'), ensureMechanicOrAdmin, reopenFault);
 router.delete('/:id', validateObjectId('id'), ensureMechanicOrAdmin, deleteFault);
 
 module.exports = router;

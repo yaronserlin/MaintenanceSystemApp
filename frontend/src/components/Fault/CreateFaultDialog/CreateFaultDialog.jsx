@@ -4,17 +4,32 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/
 import { CreateFaultForm } from '../FaultForms/FaultForms';
 
 
-export default function CreateFaultDialog({ open, onClose, onSubmit, toolId }) {
+export default function CreateFaultDialog({ open, onClose, onSubmit, toolId, equipmentId }) {
+    const activeEquipmentId = equipmentId || toolId;
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>Create Fault</DialogTitle>
+            <DialogTitle>Report New Fault</DialogTitle>
             <DialogContent dividers>
-
-
-                <CreateFaultForm onSubmit={onSubmit} toolId={toolId} />
+                <CreateFaultForm
+                    onSubmit={onSubmit}
+                    toolId={activeEquipmentId}
+                    equipmentId={activeEquipmentId}
+                    formId="create-fault-modal-form"
+                    hideSubmitButton={true}
+                />
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
+                <Button onClick={onClose} color="inherit">
+                    Cancel
+                </Button>
+                <Button
+                    type="submit"
+                    form="create-fault-modal-form"
+                    variant="contained"
+                    color="primary"
+                >
+                    Create
+                </Button>
             </DialogActions>
         </Dialog>
     );

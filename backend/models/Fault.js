@@ -13,6 +13,8 @@ const FaultSchema = new mongoose.Schema({
     operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     description: { type: String, required: true, trim: true },
     photos: [{ type: String }],
+    engineHours: { type: Number, min: 0 },
+    closingEngineHours: { type: Number, min: 0 },
     status: { type: String, enum: ['open', 'closed'], default: 'open' },
     closedAt: { type: Date },
 }, { timestamps: true });

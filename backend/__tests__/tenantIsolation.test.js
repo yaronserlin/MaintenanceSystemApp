@@ -367,6 +367,65 @@ describe('Multi-Tenant SaaS Isolation & Security Tests', () => {
 
             expect(res.status).toBe(403);
         });
+
+        it('Admin can reopen a closed fault', async () => {
+            // First ensure it's closed
+            await request(app)
+                .patch(`/api/faults/${faultAId}/close`)
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({ engineHours: 150 });
+
+            // Reopen
+            const reopenRes = await request(app)
+                .put(`/api/faults/${faultAId}/reopen`)
+                .set('Authorization', `Bearer ${companyAToken}`);
+
+            expect(reopenRes.status).toBe(200);
+            expect(reopenRes.body.status).toBe('open');
+            expect(reopenRes.body.closingEngineHours).toBeUndefined();
+        });
+
+        it('GET /api/equipment returns equipment for Company A', async () => {
+            const res = await request(app)
+                .get('/api/equipment')
+                .set('Authorization', `Bearer ${companyAToken}`);
+
+            expect(res.status).toBe(200);
+            expect(Array.isArray(res.body)).toBe(true);
+            expect(res.body.length).toBeGreaterThan(0);
+        });
+
+        it('POST /api/equipment/:id/schedules creates schedule with checklist and persists it', async () => {
+            const addRes = await request(app)
+                .post(`/api/equipment/${toolAId}/schedules`)
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({
+                    title: '250hr Scheduled Inspection',
+                    intervalHours: 250,
+                    intervalDays: 30,
+                    checklist: [
+                        'Drain engine oil and inspect color',
+                        'Replace primary cartridge filter',
+                        'Check hydraulic fluid level',
+                    ],
+                });
+
+            expect(addRes.status).toBe(201);
+            const createdSchedule = addRes.body.maintenanceSchedule.find(s => s.title === '250hr Scheduled Inspection');
+            expect(createdSchedule).toBeDefined();
+            expect(createdSchedule.checklist).toHaveLength(3);
+            expect(createdSchedule.checklist[0].text).toBe('Drain engine oil and inspect color');
+            expect(createdSchedule.checklist[0].done).toBe(false);
+
+            // Fetch via getSchedule endpoint
+            const schedRes = await request(app)
+                .get(`/api/equipment/${toolAId}/schedules/${createdSchedule._id}`)
+                .set('Authorization', `Bearer ${companyAToken}`);
+
+            expect(schedRes.status).toBe(200);
+            expect(schedRes.body.schedule.checklist).toHaveLength(3);
+            expect(schedRes.body.schedule.checklist[1].text).toBe('Replace primary cartridge filter');
+        });
     });
 
     // ── 6. Health & System Check ────────────────────────────────────

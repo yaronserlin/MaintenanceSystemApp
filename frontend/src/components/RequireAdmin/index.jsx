@@ -10,7 +10,7 @@ export default function RequireAdmin({ children }) {
     }
 
     if (user.role !== 'admin') {
-        return <Navigate to="/tools" replace />;
+        return <Navigate to="/equipment" replace />;
     }
 
     return children;

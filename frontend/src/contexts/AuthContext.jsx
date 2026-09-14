@@ -93,8 +93,19 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Upload avatar function
+    const updateAvatar = async (file) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        const { data } = await apiClient.post('/auth/me/avatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        setUser(data);
+        return data;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, setUser, userId, loading, login, signup, logout }}>
+        <AuthContext.Provider value={{ user, setUser, userId, loading, login, signup, logout, updateAvatar }}>
             {children}
         </AuthContext.Provider>
     );

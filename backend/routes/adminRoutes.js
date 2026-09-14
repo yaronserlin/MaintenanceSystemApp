@@ -26,7 +26,13 @@ router.post('/users', createUser);
 router.patch('/users/:id/role', validateObjectId('id'), updateUserRole);
 router.delete('/users/:id', validateObjectId('id'), deleteUser);
 
-// Tool management
+// Equipment management
+router.get('/equipment', getAllTools);
+router.post('/equipment', createTool);
+router.put('/equipment/:id', validateObjectId('id'), updateTool);
+router.delete('/equipment/:id', validateObjectId('id'), deleteTool);
+
+// Tool management (backward-compatible aliases)
 router.get('/tools', getAllTools);
 router.post('/tools', createTool);
 router.put('/tools/:id', validateObjectId('id'), updateTool);

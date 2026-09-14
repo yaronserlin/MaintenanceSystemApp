@@ -5,12 +5,15 @@ import adminService from '../services/adminService';
 import UserPanel from '../components/User/UserPanel/UserPanel';
 import ToolsPanel from '../components/Tool/ToolsPanel/ToolsPanel';
 import { useTool } from '../contexts/ToolContext';
+import { useNotify } from '../contexts/NotificationContext';
 
 /**
  * Page-level component that fetches both users and tools,
  * then delegates display + CRUD handlers to each panel.
  */
 export default function AdminDashboard() {
+    const notify = useNotify();
+
     // tools from context
     const {
         tools,
@@ -28,17 +31,21 @@ export default function AdminDashboard() {
 
     // fetch users once
     useEffect(() => {
-        (async () => {
-            try {
-                const data = await adminService.getUsers();
-                setUsers(data);
-            } catch (err) {
-                console.error(err);
-                setErrorUsers('Failed to load users');
-            } finally {
-                setLoadingUsers(false);
-            }
-        })();
+        let isMounted = true;
+        adminService
+            .getUsers()
+            .then((data) => {
+                if (isMounted) setUsers(data);
+            })
+            .catch((err) => {
+                if (isMounted) setErrorUsers(err);
+            })
+            .finally(() => {
+                if (isMounted) setLoadingUsers(false);
+            });
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     // tool handlers (just forward to context)
@@ -64,24 +71,42 @@ export default function AdminDashboard() {
     // user handlers (local)
     const handleCreateUser = useCallback(
         async (userData) => {
-            const newUser = await adminService.createUser(userData);
-            setUsers((prev) => [...prev, newUser]);
+            try {
+                const newUser = await adminService.createUser(userData);
+                setUsers((prev) => [...prev, newUser]);
+                notify.success('User created successfully');
+            } catch (err) {
+                console.error('Create user error:', err);
+                notify.error('Failed to create user');
+            }
         },
-        []
+        [notify]
     );
     const handleDeleteUser = useCallback(
         async (id) => {
-            await adminService.deleteUser(id);
-            setUsers((prev) => prev.filter((u) => u._id !== id));
+            try {
+                await adminService.deleteUser(id);
+                setUsers((prev) => prev.filter((u) => u._id !== id));
+                notify.success('User deleted');
+            } catch (err) {
+                console.error('Delete user error:', err);
+                notify.error('Failed to delete user');
+            }
         },
-        []
+        [notify]
     );
     const handleChangeUserRole = useCallback(
         async (id, role) => {
-            const updated = await adminService.updateUserRole(id, role);
-            setUsers((prev) => prev.map((u) => (u._id === id ? updated : u)));
+            try {
+                const updated = await adminService.updateUserRole(id, role);
+                setUsers((prev) => prev.map((u) => (u._id === id ? updated : u)));
+                notify.success(`User role updated to ${role} successfully`);
+            } catch (err) {
+                console.error('Role update error:', err);
+                notify.error('Failed to update user role');
+            }
         },
-        []
+        [notify]
     );
 
     return (

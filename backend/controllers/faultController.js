@@ -66,7 +66,7 @@ exports.createFault = async (req, res, next) => {
             return res.status(400).json({ message: 'No data provided' });
         }
 
-        const { tool: toolId, description, code, photos: bodyPhotos } = req.body;
+        const { tool: toolId, description, code, photos: bodyPhotos, engineHours } = req.body;
 
         if (!description || typeof description !== 'string' || description.trim().length === 0) {
             return res.status(400).json({ message: 'Description is required' });
@@ -97,24 +97,32 @@ exports.createFault = async (req, res, next) => {
 
         const allPhotos = [...uploadedPhotos, ...additionalPhotos];
 
+        const parsedHours = engineHours !== undefined && engineHours !== '' ? parseFloat(engineHours) : undefined;
+        const validHours = parsedHours !== undefined && !isNaN(parsedHours) && parsedHours >= 0 ? parsedHours : undefined;
+
         const fault = await Fault.create({
             companyId: req.user.companyId,
             tool: tool._id,
             operator: req.user.userId,
             description: description.trim(),
             code: code && typeof code === 'string' ? code.trim() : undefined,
+            engineHours: validHours,
             photos: allPhotos,
             status: 'open',
         });
 
-        // Atomically push fault into Tool backref
+        // Atomically push fault into Tool backref and update current hours if provided
+        const toolUpdates = { $push: { faults: fault._id } };
+        if (validHours !== undefined && validHours > (tool.currentEngineHours || 0)) {
+            toolUpdates.$set = { currentEngineHours: validHours };
+        }
         await Tool.findOneAndUpdate(
             { _id: tool._id, companyId: req.user.companyId },
-            { $push: { faults: fault._id } }
+            toolUpdates
         );
 
         const populatedFault = await Fault.findById(fault._id)
-            .populate('tool', 'name serialNumber model')
+            .populate('tool', 'name serialNumber model currentEngineHours')
             .populate('operator', 'name email role');
 
         res.status(201).json(populatedFault);
@@ -125,11 +133,66 @@ exports.createFault = async (req, res, next) => {
 
 exports.closeFault = async (req, res, next) => {
     try {
+        const { engineHours } = req.body || {};
+        const parsedHours = engineHours !== undefined && engineHours !== '' ? parseFloat(engineHours) : null;
+        const validHours = parsedHours !== null && !isNaN(parsedHours) && parsedHours >= 0 ? parsedHours : null;
+
+        const updateData = {
+            status: 'closed',
+            closedAt: new Date(),
+        };
+        if (validHours !== null) {
+            updateData.closingEngineHours = validHours;
+        }
+
+        const fault = await Fault.findOneAndUpdate(
+            { _id: req.params.id, companyId: req.user.companyId },
+            updateData,
+            { new: true, runValidators: true }
+        ).populate('tool operator');
+
+        if (!fault) {
+            return res.status(404).json({ message: 'Fault not found' });
+        }
+
+        // If closing engine hours were reported, update the equipment's currentEngineHours and recalculate schedule
+        if (fault.tool && validHours !== null) {
+            const toolDoc = await Tool.findOne({ _id: fault.tool._id || fault.tool, companyId: req.user.companyId });
+            if (toolDoc) {
+                if (validHours > (toolDoc.currentEngineHours || 0)) {
+                    toolDoc.currentEngineHours = validHours;
+                }
+                if (toolDoc.maintenanceSchedule?.length > 0) {
+                    toolDoc.maintenanceSchedule.forEach(task => {
+                        if (task.intervalHours > 0) {
+                            const hoursRemaining = (task.nextDueHours || task.intervalHours) - toolDoc.currentEngineHours;
+                            if (hoursRemaining <= 0) {
+                                task.status = 'overdue';
+                            } else if (hoursRemaining <= 20) {
+                                task.status = 'due_soon';
+                            } else {
+                                task.status = 'normal';
+                            }
+                        }
+                    });
+                }
+                await toolDoc.save();
+            }
+        }
+
+        res.json(fault);
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.reopenFault = async (req, res, next) => {
+    try {
         const fault = await Fault.findOneAndUpdate(
             { _id: req.params.id, companyId: req.user.companyId },
             {
-                status: 'closed',
-                closedAt: new Date(),
+                status: 'open',
+                $unset: { closedAt: 1, closingEngineHours: 1 },
             },
             { new: true, runValidators: true }
         ).populate('tool operator');

@@ -1,5 +1,5 @@
-// src/components/FaultDetailsDialog.jsx
-import React from 'react';
+// src/components/Fault/FaultDetailsDialog/FaultDetailsDialog.jsx
+import React, { useState } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -9,57 +9,230 @@ import {
     ListItem,
     ListItemText,
     Button,
+    Box,
+    Typography,
+    Chip,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SpeedIcon from '@mui/icons-material/Speed';
+import { getMediaUrl } from '../../../utils/mediaUtils';
+import { useAuth } from '../../../contexts/AuthContext';
+import ConfirmDialog from '../../ConfirmDialog/ConfirmDialog';
+import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
 
-export default function FaultDetailsDialog({ open, onClose, fault }) {
+export default function FaultDetailsDialog({
+    open,
+    onClose,
+    fault,
+    onDeleteFault,
+    onCloseFault,
+    onReopenFault,
+}) {
+    const { user } = useAuth();
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(null);
+    const canManage = user && (user.role === 'admin' || user.role === 'mechanic');
+
+    const handleConfirmDelete = () => {
+        setConfirmDeleteOpen(false);
+        onDeleteFault?.(fault);
+        onClose();
+    };
+
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>Fault Details</DialogTitle>
-            <DialogContent dividers>
-                {fault && (
-                    <List>
-                        <ListItem>
-                            <ListItemText primary="Code" secondary={fault.code || 'N/A'} />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemText primary="Description" secondary={fault.description} />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemText
-                                primary="Operator"
-                                secondary={fault.operator?.name || fault.operator || 'N/A'}
-                            />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemText primary="Status" secondary={fault.status} />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemText
-                                primary="Reported At"
-                                secondary={new Date(fault.createdAt).toLocaleString("en-GB")}
-                            />
-                        </ListItem>
-                        {fault.status === 'closed' && (
-                            <ListItem>
+        <>
+            <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+                <DialogTitle
+                    component="div"
+                    sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                    <Typography variant="h6" component="div">Fault Details</Typography>
+                    {fault?.status && (
+                        <Chip
+                            label={fault.status.toUpperCase()}
+                            color={fault.status === 'open' ? 'error' : 'success'}
+                            size="small"
+                        />
+                    )}
+                </DialogTitle>
+                <DialogContent dividers>
+                    {fault && (
+                        <List disablePadding>
+                            <ListItem disableGutters>
+                                <ListItemText primary="Fault Code" secondary={fault.code || 'N/A'} />
+                            </ListItem>
+                            <ListItem disableGutters>
+                                <ListItemText primary="Description" secondary={fault.description} />
+                            </ListItem>
+
+                            {fault.engineHours !== undefined && (
+                                <ListItem disableGutters>
+                                    <ListItemText
+                                        primary="Reported Engine Hours"
+                                        secondary={
+                                            <Chip
+                                                icon={<SpeedIcon />}
+                                                label={`${fault.engineHours} hrs`}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{ mt: 0.5 }}
+                                            />
+                                        }
+                                    />
+                                </ListItem>
+                            )}
+
+                            {fault.closingEngineHours !== undefined && (
+                                <ListItem disableGutters>
+                                    <ListItemText
+                                        primary="Closing Engine Hours"
+                                        secondary={
+                                            <Chip
+                                                icon={<SpeedIcon />}
+                                                label={`${fault.closingEngineHours} hrs`}
+                                                size="small"
+                                                color="success"
+                                                variant="outlined"
+                                                sx={{ mt: 0.5 }}
+                                            />
+                                        }
+                                    />
+                                </ListItem>
+                            )}
+
+                            <ListItem disableGutters>
                                 <ListItemText
-                                    primary="Closed At"
-                                    secondary={
-                                        fault.closedAt ? new Date(fault.closedAt).toLocaleString("en-GB") : 'N/A'
-                                    }
+                                    primary="Reported By"
+                                    secondary={fault.operator?.name || fault.operator || 'N/A'}
                                 />
                             </ListItem>
-                        )}
-                        {fault.photos?.length > 0 && (
-                            <ListItem>
-                                <ListItemText primary="Photos" secondary={fault.photos.join(', ')} />
+
+                            <ListItem disableGutters>
+                                <ListItemText
+                                    primary="Reported At"
+                                    secondary={new Date(fault.createdAt).toLocaleString('en-GB')}
+                                />
                             </ListItem>
+
+                            {fault.status === 'closed' && (
+                                <ListItem disableGutters>
+                                    <ListItemText
+                                        primary="Closed At"
+                                        secondary={
+                                            fault.closedAt ? new Date(fault.closedAt).toLocaleString('en-GB') : 'N/A'
+                                        }
+                                    />
+                                </ListItem>
+                            )}
+
+                            {fault.photos?.length > 0 && (
+                                <ListItem disableGutters sx={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                        Photos ({fault.photos.length}):
+                                    </Typography>
+                                    <Box display="flex" gap={1.5} flexWrap="wrap">
+                                        {fault.photos.map((photo, idx) => (
+                                            <Box
+                                                key={idx}
+                                                component="button"
+                                                type="button"
+                                                onClick={() => setViewerIndex(idx)}
+                                                aria-label={`View photo ${idx + 1}`}
+                                                sx={{
+                                                    all: 'unset',
+                                                    cursor: 'pointer',
+                                                    borderRadius: '6px',
+                                                    overflow: 'hidden',
+                                                    border: '1px solid #ccc',
+                                                    display: 'block',
+                                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                                    '&:hover': {
+                                                        transform: 'scale(1.04)',
+                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                                    },
+                                                    '&:focus-visible': {
+                                                        outline: '2px solid #1976d2',
+                                                        outlineOffset: '2px',
+                                                    },
+                                                }}
+                                            >
+                                                <Box
+                                                    component="img"
+                                                    src={getMediaUrl(photo)}
+                                                    alt={`Photo ${idx + 1}`}
+                                                    sx={{ width: 90, height: 90, objectFit: 'cover', display: 'block' }}
+                                                />
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                </ListItem>
+                            )}
+                        </List>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ justifyContent: 'space-between', px: 3, py: 1.5 }}>
+                    {canManage && onDeleteFault ? (
+                        <Button
+                            color="error"
+                            variant="outlined"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => setConfirmDeleteOpen(true)}
+                        >
+                            Delete
+                        </Button>
+                    ) : <Box />}
+
+                    <Box display="flex" gap={1}>
+                        {canManage && fault?.status === 'closed' && onReopenFault && (
+                            <Button
+                                variant="outlined"
+                                color="secondary"
+                                onClick={() => {
+                                    onClose();
+                                    onReopenFault(fault);
+                                }}
+                            >
+                                Reopen
+                            </Button>
                         )}
-                    </List>
-                )}
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Close</Button>
-            </DialogActions>
-        </Dialog>
+                        {canManage && fault?.status === 'open' && onCloseFault && (
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={() => {
+                                    onClose();
+                                    onCloseFault(fault);
+                                }}
+                            >
+                                Close
+                            </Button>
+                        )}
+                        <Button onClick={onClose} variant="outlined">
+                            Close
+                        </Button>
+                    </Box>
+                </DialogActions>
+            </Dialog>
+
+            <ConfirmDialog
+                open={confirmDeleteOpen}
+                title="Confirm Delete"
+                message="Are you sure you want to delete this fault?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                confirmColor="error"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmDeleteOpen(false)}
+            />
+
+            {/* In-App Image Viewer Dialog */}
+            <ImageViewerDialog
+                open={viewerIndex !== null}
+                onClose={() => setViewerIndex(null)}
+                images={fault?.photos || []}
+                initialIndex={viewerIndex ?? 0}
+                title={`Fault ${fault?.code || ''} Photo`}
+            />
+        </>
     );
 }

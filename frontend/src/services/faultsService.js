@@ -32,8 +32,8 @@ const faultService = {
         return apiClient.post('/faults', payload).then(res => res.data);
     },
 
-    close: (id) =>
-        apiClient.patch(`/faults/${id}/close`)
+    close: (id, payload = {}) =>
+        apiClient.patch(`/faults/${id}/close`, payload)
             .then(res => res.data),
 
     reopen: (id) =>
