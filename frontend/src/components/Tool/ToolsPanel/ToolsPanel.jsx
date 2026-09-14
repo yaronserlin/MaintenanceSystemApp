@@ -65,10 +65,10 @@ export default function ToolsPanel({ tools, loading, error, onCreate, onUpdate, 
     ) : (
         <>
             <Button variant="contained" sx={{ mb: 1 }} onClick={() => openDialog('create')}>
-                + New Tool
+                Create
             </Button>
-            <TableContainer>
-                <Table size="small">
+            <TableContainer sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <Table size="small" sx={{ minWidth: 320 }}>
                     <TableHead>
                         <TableRow>
                             <TableCell>Name</TableCell>
@@ -80,12 +80,12 @@ export default function ToolsPanel({ tools, loading, error, onCreate, onUpdate, 
                         {tools.map((t) => (
                             <TableRow key={t._id}>
                                 <TableCell>{t.name}</TableCell>
-                                <TableCell>{t.localSerialNumber}</TableCell>
+                                <TableCell>{t.localSerialNumber || t.serialNumber || '-'}</TableCell>
                                 <TableCell align="right">
-                                    <IconButton onClick={() => openDialog('update', t)}>
+                                    <IconButton onClick={() => openDialog('update', t)} title="Edit">
                                         <EditIcon />
                                     </IconButton>
-                                    <IconButton onClick={() => openDialog('delete', t)}>
+                                    <IconButton onClick={() => openDialog('delete', t)} color="error" title="Delete">
                                         <DeleteIcon />
                                     </IconButton>
                                 </TableCell>
@@ -101,7 +101,7 @@ export default function ToolsPanel({ tools, loading, error, onCreate, onUpdate, 
         <Grid size={{ xs: 12, lg: 6 }}>
             <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                    Tools
+                    Equipment
                 </Typography>
                 {body}
             </Paper>
@@ -110,10 +110,11 @@ export default function ToolsPanel({ tools, loading, error, onCreate, onUpdate, 
             <DialogComponent
                 open={dialog.type === 'create' || dialog.type === 'update'}
                 onClose={closeDialog}
-                title={dialog.type === 'update' ? 'Update Tool' : 'Create New Tool'}
+                title={dialog.type === 'update' ? 'Update Equipment' : 'Create Equipment'}
                 submitButtonText={dialog.type === 'update' ? 'Update' : 'Create'}
                 cancelButtonText="Cancel"
-            // onSubmit={dialog.type === 'update' ? handleUpdate : handleCreate}
+                onDelete={dialog.type === 'update' ? () => openDialog('delete', dialog.tool) : undefined}
+                deleteButtonText="Delete"
             >
                 {dialog.type === 'update' ? (
                     <UpdateToolForm initialData={dialog.tool} onSubmit={handleUpdate} />
@@ -131,7 +132,7 @@ export default function ToolsPanel({ tools, loading, error, onCreate, onUpdate, 
                 cancelButtonText="Cancel"
                 onSubmit={handleDelete}
             >
-                Are you sure you want to delete “{dialog.tool?.name}”?
+                Are you sure you want to delete “{dialog.tool?.name}”? This will also delete all associated faults and maintenance records.
             </DialogComponent>
         </Grid>
     );

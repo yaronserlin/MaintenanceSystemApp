@@ -1,16 +1,43 @@
 // src/pages/AccountPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, TextField, Button, Alert } from '@mui/material';
+import {
+    Container,
+    Typography,
+    Box,
+    TextField,
+    Button,
+    Alert,
+    Avatar,
+    IconButton,
+    CircularProgress,
+    Divider,
+} from '@mui/material';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import { styled } from '@mui/material/styles';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
+import { getMediaUrl } from '../utils/mediaUtils';
+
+const VisuallyHiddenInput = styled('input')({
+    clip: 'rect(0 0 0 0)',
+    clipPath: 'inset(50%)',
+    height: 1,
+    overflow: 'hidden',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    whiteSpace: 'nowrap',
+    width: 1,
+});
 
 export default function AccountPage() {
-    const { user, setUser } = useAuth();
+    const { user, setUser, updateAvatar } = useAuth();
     const [form, setForm] = useState({ name: '', email: '' });
     const [pwd, setPwd] = useState({ currentPassword: '', newPassword: '', confirm: '' });
     const [msg, setMsg] = useState(null);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [avatarLoading, setAvatarLoading] = useState(false);
 
     useEffect(() => {
         if (user) setForm({ name: user.name || '', email: user.email || '' });
@@ -19,9 +46,37 @@ export default function AccountPage() {
     const handleChange = e => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
     const handlePwdChange = e => setPwd(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+    const handleAvatarChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setAvatarLoading(true);
+        setMsg(null);
+        setError(null);
+        try {
+            if (updateAvatar) {
+                await updateAvatar(file);
+            } else {
+                const formData = new FormData();
+                formData.append('avatar', file);
+                const { data } = await apiClient.post('/auth/me/avatar', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                setUser(prev => ({ ...prev, ...data }));
+            }
+            setMsg('Profile picture updated successfully');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to upload profile picture');
+        } finally {
+            setAvatarLoading(false);
+        }
+    };
+
     const handleUpdateProfile = async (e) => {
         if (e) e.preventDefault();
-        setLoading(true); setMsg(null); setError(null);
+        setLoading(true);
+        setMsg(null);
+        setError(null);
         try {
             const { data } = await apiClient.put('/auth/me', form);
             setUser(prev => ({ ...prev, ...data }));
@@ -39,7 +94,9 @@ export default function AccountPage() {
             setError('New passwords do not match');
             return;
         }
-        setLoading(true); setMsg(null); setError(null);
+        setLoading(true);
+        setMsg(null);
+        setError(null);
         try {
             const { data } = await apiClient.post('/auth/me/change-password', {
                 currentPassword: pwd.currentPassword,
@@ -56,21 +113,67 @@ export default function AccountPage() {
     };
 
     return (
-        <Container sx={{ mt: 4 }}>
+        <Container maxWidth="sm" sx={{ mt: 4, mb: 6 }}>
             <Typography variant="h4" gutterBottom>Account Settings</Typography>
 
             {msg && <Alert severity="success" sx={{ mb: 2 }}>{msg}</Alert>}
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+            {/* Profile Avatar Card */}
+            <Box display="flex" alignItems="center" gap={3} sx={{ mb: 4, p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid #e0e0e0' }}>
+                <Box position="relative">
+                    <Avatar
+                        src={getMediaUrl(user?.avatar)}
+                        alt={user?.name}
+                        sx={{ width: 84, height: 84, fontSize: '2rem' }}
+                    >
+                        {user?.name?.charAt(0)}
+                    </Avatar>
+                    {avatarLoading && (
+                        <CircularProgress
+                            size={84}
+                            sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                zIndex: 1,
+                            }}
+                        />
+                    )}
+                </Box>
+                <Box>
+                    <Typography variant="subtitle1" fontWeight="bold">
+                        Profile Picture
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        JPG, PNG, GIF up to 5MB
+                    </Typography>
+                    <Button
+                        component="label"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<PhotoCameraIcon />}
+                        disabled={avatarLoading}
+                    >
+                        Upload Photo
+                        <VisuallyHiddenInput
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarChange}
+                        />
+                    </Button>
+                </Box>
+            </Box>
+
             <Box component="form" onSubmit={handleUpdateProfile} sx={{ mb: 4 }}>
-                <Typography variant="h6">Profile</Typography>
+                <Typography variant="h6" gutterBottom>Personal Information</Typography>
                 <TextField
                     fullWidth
                     label="Name"
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    sx={{ mb: 2, mt: 1 }}
+                    sx={{ mb: 2 }}
                     required
                 />
                 <TextField
@@ -84,12 +187,14 @@ export default function AccountPage() {
                     required
                 />
                 <Button type="submit" variant="contained" disabled={loading}>
-                    Save Profile
+                    Save
                 </Button>
             </Box>
 
+            <Divider sx={{ my: 4 }} />
+
             <Box component="form" onSubmit={handleChangePassword}>
-                <Typography variant="h6" sx={{ mb: 1 }}>Change Password</Typography>
+                <Typography variant="h6" gutterBottom>Change Password</Typography>
                 <TextField
                     fullWidth
                     label="Current Password"
@@ -97,7 +202,7 @@ export default function AccountPage() {
                     type="password"
                     value={pwd.currentPassword}
                     onChange={handlePwdChange}
-                    sx={{ mb: 2, mt: 1 }}
+                    sx={{ mb: 2 }}
                     required
                 />
                 <TextField
@@ -121,7 +226,7 @@ export default function AccountPage() {
                     required
                 />
                 <Button type="submit" variant="contained" disabled={loading}>
-                    Change Password
+                    Update
                 </Button>
             </Box>
         </Container>

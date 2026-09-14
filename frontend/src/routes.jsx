@@ -18,12 +18,13 @@ import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import Logout from './pages/Logout';
 import ToolsPage from './pages/ToolsPage';
+import EquipmentSchedulePage from './pages/EquipmentSchedulePage';
 import ProfilePage from './pages/ProfilePage';
 import AccountPage from './pages/AccountPage';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function AppRoutes() {
-    const pages = ['Dashboard', 'Tools'];
+    const pages = ['Dashboard', 'Equipment'];
     const settings = ['Profile', 'Account', 'Logout'];
 
     return (
@@ -50,7 +51,7 @@ export default function AppRoutes() {
                                     }
                                 />
                                 <Route
-                                    path="/tools"
+                                    path="/equipment"
                                     element={
                                         <ProtectedRoute>
                                             <ToolsPage />
@@ -58,10 +59,39 @@ export default function AppRoutes() {
                                     }
                                 />
                                 <Route
+                                    path="/equipment/:id"
+                                    element={
+                                        <ProtectedRoute>
+                                            <ToolPage />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/equipment/:id/schedules/:scheduleId"
+                                    element={
+                                        <ProtectedRoute>
+                                            <EquipmentSchedulePage />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                                {/* Backward-compatible aliases for /tools */}
+                                <Route
+                                    path="/tools"
+                                    element={<Navigate to="/equipment" replace />}
+                                />
+                                <Route
                                     path="/tools/:id"
                                     element={
                                         <ProtectedRoute>
                                             <ToolPage />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/tools/:id/schedules/:scheduleId"
+                                    element={
+                                        <ProtectedRoute>
+                                            <EquipmentSchedulePage />
                                         </ProtectedRoute>
                                     }
                                 />

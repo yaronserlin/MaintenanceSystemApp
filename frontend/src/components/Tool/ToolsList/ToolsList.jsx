@@ -26,7 +26,7 @@ export default function ToolsList({ tools }) {
     if (tools.length === 0) {
         return (
             <Container sx={{ mt: 4 }}>
-                <Typography>No tools available.</Typography>
+                <Typography color="text.secondary">No equipment available.</Typography>
             </Container>
         );
     }
@@ -35,15 +35,14 @@ export default function ToolsList({ tools }) {
         <List>
             {tools.map((tool, index) => (
                 <React.Fragment key={tool._id}>
-                    <ListItem
-                        disablePadding
-                    >
-                        <ListItemButton onClick={() => navigate(`/tools/${tool._id}`)}>
+                    <ListItem disablePadding>
+                        <ListItemButton onClick={() => navigate(`/equipment/${tool._id}`)}>
                             <ListItemText
                                 primary={`${tool.localSerialNumber ? tool.localSerialNumber + ' - ' : ''}${tool.name}`}
                                 secondary={
-                                    `${tool.model ? 'Model: ' + tool.model + ' - ' : ''}` +
-                                    `${tool.serialNumber ? 'Serial Number: ' + tool.serialNumber + ' - ' : ''}` +
+                                    `${tool.model ? 'Model: ' + tool.model + ' | ' : ''}` +
+                                    `${tool.serialNumber ? 'Serial: ' + tool.serialNumber + ' | ' : ''}` +
+                                    `${tool.currentEngineHours ? 'Hours: ' + tool.currentEngineHours + ' hrs | ' : ''}` +
                                     `${tool.description || ''}`
                                 }
                             />

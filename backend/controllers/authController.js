@@ -90,6 +90,7 @@ exports.register = async (req, res, next) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    avatar: user.avatar || null,
                     company: {
                         id: company._id,
                         _id: company._id,
@@ -149,6 +150,7 @@ exports.login = async (req, res, next) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                avatar: user.avatar || null,
                 company: {
                     id: user.companyId._id,
                     _id: user.companyId._id,
@@ -181,6 +183,7 @@ exports.me = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            avatar: user.avatar || null,
             company: user.companyId,
         });
     } catch (err) {
@@ -221,6 +224,39 @@ exports.updateProfile = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            avatar: user.avatar || null,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Upload profile avatar
+exports.uploadAvatar = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Avatar image file is required' });
+        }
+
+        const avatarUrl = `/uploads/${req.file.filename}`;
+        const user = await User.findByIdAndUpdate(
+            req.user.userId,
+            { avatar: avatarUrl },
+            { new: true }
+        ).populate('companyId');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
+            id: user._id,
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            avatar: user.avatar,
+            company: user.companyId,
         });
     } catch (err) {
         next(err);

@@ -14,14 +14,17 @@ import {
     FormControl,
     Select,
     MenuItem,
+    Box,
+    CircularProgress,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-
+import SaveIcon from '@mui/icons-material/Save';
 
 import { CreateUserForm } from '../UserForms/UserForms';
 import LoadingComponent from '../../LoadingComponent/LoadingComponent';
 import ErrorComponent from '../../ErrorComponent/ErrorComponent';
 import DialogComponent from '../../DialogComponent';
+
 /**
  * Presentational user‐management panel.
  * Expects all data+handlers as props (no internal fetch).
@@ -35,6 +38,8 @@ export default function UserPanel({
     onRoleChange,
 }) {
     const [dialog, setDialog] = useState({ type: null, user: null });
+    const [pendingRoles, setPendingRoles] = useState({});
+    const [savingUserId, setSavingUserId] = useState(null);
 
     const openDialog = useCallback((type, user = null) => {
         setDialog({ type, user });
@@ -54,23 +59,42 @@ export default function UserPanel({
         [onCreate, closeDialog]
     );
 
+    const handleRoleSelect = (userId, newRole) => {
+        setPendingRoles(prev => ({ ...prev, [userId]: newRole }));
+    };
+
+    const handleSaveRole = async (userId) => {
+        const newRole = pendingRoles[userId];
+        if (!newRole) return;
+        setSavingUserId(userId);
+        try {
+            await onRoleChange(userId, newRole);
+            setPendingRoles(prev => {
+                const copy = { ...prev };
+                delete copy[userId];
+                return copy;
+            });
+        } finally {
+            setSavingUserId(null);
+        }
+    };
+
     if (loading) return <LoadingComponent />;
     if (error) return <ErrorComponent message={error} />;
 
     return (
         <Grid size={{ xs: 12, lg: 6 }}>
-
             <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>
                     Users
                 </Typography>
 
                 <Button variant="contained" sx={{ mb: 1 }} onClick={() => openDialog('create')}>
-                    + New User
+                    Create
                 </Button>
 
-                <TableContainer>
-                    <Table size="small">
+                <TableContainer sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <Table size="small" sx={{ minWidth: 420 }}>
                         <TableHead>
                             <TableRow>
                                 <TableCell>Name</TableCell>
@@ -80,29 +104,50 @@ export default function UserPanel({
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {users.map((u) => (
-                                <TableRow key={u._id}>
-                                    <TableCell>{u.name}</TableCell>
-                                    <TableCell>{u.email}</TableCell>
-                                    <TableCell>
-                                        <FormControl variant="standard" size="small">
-                                            <Select
-                                                value={u.role}
-                                                onChange={(e) => onRoleChange(u._id, e.target.value)}
-                                            >
-                                                <MenuItem value="operator">Operator</MenuItem>
-                                                <MenuItem value="mechanic">Mechanic</MenuItem>
-                                                <MenuItem value="admin">Admin</MenuItem>
-                                            </Select>
-                                        </FormControl>
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        <IconButton onClick={() => openDialog('delete', u)}>
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {users.map((u) => {
+                                const selectedRole = pendingRoles[u._id] || u.role;
+                                const hasUnsavedRole = pendingRoles[u._id] && pendingRoles[u._id] !== u.role;
+                                const isSaving = savingUserId === u._id;
+
+                                return (
+                                    <TableRow key={u._id}>
+                                        <TableCell>{u.name}</TableCell>
+                                        <TableCell>{u.email}</TableCell>
+                                        <TableCell>
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <FormControl variant="standard" size="small">
+                                                    <Select
+                                                        value={selectedRole}
+                                                        onChange={(e) => handleRoleSelect(u._id, e.target.value)}
+                                                    >
+                                                        <MenuItem value="operator">Operator</MenuItem>
+                                                        <MenuItem value="mechanic">Mechanic</MenuItem>
+                                                        <MenuItem value="admin">Admin</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+
+                                                {isSaving ? (
+                                                    <CircularProgress size={20} />
+                                                ) : hasUnsavedRole ? (
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        title="Save Role"
+                                                        onClick={() => handleSaveRole(u._id)}
+                                                    >
+                                                        <SaveIcon fontSize="small" />
+                                                    </IconButton>
+                                                ) : null}
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <IconButton onClick={() => openDialog('delete', u)} title="Delete User">
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </TableContainer>

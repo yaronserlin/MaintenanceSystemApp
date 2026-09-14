@@ -5,27 +5,54 @@ import Modal from '@mui/material/Modal';
 import Fade from '@mui/material/Fade';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import { Chip } from '@mui/material';
+import { Chip, Stack } from '@mui/material';
+import SpeedIcon from '@mui/icons-material/Speed';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { getMediaUrl } from '../../../utils/mediaUtils';
+import { useAuth } from '../../../contexts/AuthContext';
+import ConfirmDialog from '../../ConfirmDialog/ConfirmDialog';
+import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
 
 const style = {
     position: 'absolute',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '80%',
-    maxWidth: '600px',
+    width: '90%',
+    maxWidth: '650px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
     bgcolor: 'background.paper',
-    border: '2px solid #000',
-    borderRadius: '8px',
+    borderRadius: '12px',
     boxShadow: 24,
-    p: 4,
+    p: 3.5,
 };
 
-export default function FaultModal({ fault, handleClose, open }) {
+export default function FaultModal({
+    fault,
+    handleClose,
+    open,
+    onCloseFault,
+    onReopenFault,
+    onDeleteFault,
+}) {
+    const { user } = useAuth();
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
+    const [viewerIndex, setViewerIndex] = React.useState(null);
+
     if (!fault) return null;
 
+    const canManage = user && (user.role === 'admin' || user.role === 'mechanic');
+    const photos = fault.photos || [];
+
+    const handleConfirmDelete = () => {
+        setConfirmDeleteOpen(false);
+        onDeleteFault?.(fault);
+        handleClose();
+    };
+
     return (
-        <div>
+        <>
             <Modal
                 aria-labelledby="modal-title"
                 aria-describedby="modal-description"
@@ -41,30 +68,161 @@ export default function FaultModal({ fault, handleClose, open }) {
             >
                 <Fade in={open}>
                     <Box sx={style}>
-                        <Typography id="modal-title" variant="h6" component="h2">
-                            {fault.tool?.name ?? 'Unknown Tool'} - Code: {fault.code || 'N/A'}
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+                            <Typography id="modal-title" variant="h6" component="h2" fontWeight="bold">
+                                {fault.tool?.name ?? 'Equipment'} — {fault.code || 'No Code'}
+                            </Typography>
                             {fault.status && (
                                 <Chip
                                     label={fault.status.toUpperCase()}
                                     color={fault.status === 'open' ? 'error' : 'success'}
-                                    sx={{ ml: 2 }}
+                                    size="small"
                                 />
                             )}
+                        </Box>
+
+                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
+                            {fault.engineHours !== undefined && (
+                                <Chip
+                                    icon={<SpeedIcon />}
+                                    label={`Reported Hours: ${fault.engineHours} hrs`}
+                                    size="small"
+                                    variant="outlined"
+                                />
+                            )}
+                            {fault.closingEngineHours !== undefined && (
+                                <Chip
+                                    icon={<SpeedIcon />}
+                                    label={`Closing Hours: ${fault.closingEngineHours} hrs`}
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                />
+                            )}
+                        </Stack>
+
+                        <Typography variant="subtitle2" color="text.secondary">
+                            Description:
                         </Typography>
-                        <Typography id="modal-description" sx={{ mt: 2 }}>
+                        <Typography id="modal-description" sx={{ mt: 0.5, mb: 2, whiteSpace: 'pre-wrap' }}>
                             {fault.description}
                         </Typography>
-                        <Typography sx={{ mt: 2 }} color="text.secondary">
-                            Created at {fault.createdAt ? new Date(fault.createdAt).toLocaleDateString('en-GB') : 'N/A'}
+
+                        {/* Photos Gallery */}
+                        {photos.length > 0 && (
+                            <Box sx={{ mb: 2.5 }}>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Photos ({photos.length}):
+                                </Typography>
+                                <Box display="flex" gap={1.5} flexWrap="wrap">
+                                    {photos.map((photo, idx) => (
+                                        <Box
+                                            key={idx}
+                                            component="button"
+                                            type="button"
+                                            onClick={() => setViewerIndex(idx)}
+                                            aria-label={`View photo ${idx + 1}`}
+                                            sx={{
+                                                all: 'unset',
+                                                cursor: 'pointer',
+                                                display: 'block',
+                                                borderRadius: '8px',
+                                                overflow: 'hidden',
+                                                border: '1px solid #ddd',
+                                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                                '&:hover': {
+                                                    transform: 'scale(1.03)',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                                },
+                                                '&:focus-visible': {
+                                                    outline: '2px solid #1976d2',
+                                                    outlineOffset: '2px',
+                                                },
+                                            }}
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={getMediaUrl(photo)}
+                                                alt={`Fault photo ${idx + 1}`}
+                                                sx={{ width: 110, height: 110, objectFit: 'cover', display: 'block' }}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Box>
+                        )}
+
+                        <Typography variant="caption" color="text.secondary" display="block">
+                            Reported: {fault.createdAt ? new Date(fault.createdAt).toLocaleString('en-GB') : 'N/A'}
+                            {fault.closedAt && ` | Closed: ${new Date(fault.closedAt).toLocaleString('en-GB')}`}
                         </Typography>
-                        <Box sx={{ mt: 3, textAlign: 'right' }}>
-                            <Button variant="outlined" onClick={handleClose}>
-                                Close
-                            </Button>
+
+                        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            {canManage && onDeleteFault ? (
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    startIcon={<DeleteIcon />}
+                                    onClick={() => setConfirmDeleteOpen(true)}
+                                >
+                                    Delete
+                                </Button>
+                            ) : <Box />}
+
+                            <Box display="flex" gap={1.5}>
+                                {canManage && fault.status === 'closed' && onReopenFault && (
+                                    <Button
+                                        variant="outlined"
+                                        color="secondary"
+                                        onClick={() => {
+                                            onReopenFault(fault);
+                                            handleClose();
+                                        }}
+                                    >
+                                        Reopen
+                                    </Button>
+                                )}
+                                {canManage && fault.status !== 'closed' && onCloseFault && (
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={() => {
+                                            onCloseFault(fault);
+                                            handleClose();
+                                        }}
+                                    >
+                                        Close
+                                    </Button>
+                                )}
+                                <Button variant="outlined" onClick={handleClose}>
+                                    Close
+                                </Button>
+                            </Box>
                         </Box>
                     </Box>
                 </Fade>
             </Modal>
-        </div>
+
+            {/* In-App Confirmation Dialog replacing window.confirm */}
+            <ConfirmDialog
+                open={confirmDeleteOpen}
+                title="Confirm Delete"
+                message="Are you sure you want to permanently delete this fault record?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                confirmColor="error"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmDeleteOpen(false)}
+            />
+
+            {/* In-App Image Viewer Dialog */}
+            <ImageViewerDialog
+                open={viewerIndex !== null}
+                onClose={() => setViewerIndex(null)}
+                images={photos}
+                initialIndex={viewerIndex ?? 0}
+                title={`Fault ${fault.code || ''} Photo`}
+            />
+        </>
     );
 }

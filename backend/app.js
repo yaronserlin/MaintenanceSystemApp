@@ -11,11 +11,13 @@ const { verifyToken } = require('./middleware/authMiddleware');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
+const equipmentRoutes = require('./routes/equipmentRoutes');
 const toolRoutes = require('./routes/toolRoutes');
 const faultRoutes = require('./routes/faultRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const partRoutes = require('./routes/partRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const logger = require('./utils/logger');
 
 const app = express();
 
@@ -27,6 +29,12 @@ if (process.env.NODE_ENV !== 'test') {
 // Security headers
 app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            'frame-ancestors': ["'self'", 'http://localhost:5173', 'http://localhost:4173', process.env.FRONTEND_URL].filter(Boolean),
+        },
+    },
 }));
 
 // CORS locked to configured frontend origin
@@ -48,8 +56,18 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Uploads - protected by authentication (Finding #8)
-app.use('/uploads', verifyToken, express.static(path.join(__dirname, 'uploads')));
+// HTTP Request Logger
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        logger.http(`${req.method} ${req.originalUrl || req.url} ${res.statusCode} (${duration}ms)`);
+    });
+    next();
+});
+
+// Uploads - served statically so <img> and PDF viewers can load media without CORS issues
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check endpoint (Phase 5)
 app.get('/api/health', (req, res) => {
@@ -63,6 +81,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/equipment', equipmentRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/faults', faultRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
@@ -73,32 +92,37 @@ app.use('/api/admin', adminRoutes);
 app.use((err, req, res, next) => {
     // Syntax error from bad JSON payload
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        logger.warn(`JSON syntax error: ${err.message}`);
         return res.status(400).json({ message: 'Invalid JSON payload' });
     }
 
     // Mongoose validation errors
     if (err.name === 'ValidationError') {
         const messages = Object.values(err.errors).map(e => e.message);
+        logger.warn(`Validation error: ${messages.join(', ')}`);
         return res.status(400).json({ message: messages.join(', ') });
     }
 
     // Mongoose cast errors (invalid ObjectId)
     if (err.name === 'CastError') {
+        logger.warn(`Cast error on field ${err.path}: ${err.value}`);
         return res.status(400).json({ message: `Invalid ${err.path}: ${err.value}` });
     }
 
     // Multer file upload errors
     if (err.name === 'MulterError') {
+        logger.warn(`Multer upload error: ${err.message}`);
         return res.status(400).json({ message: err.message });
     }
 
     // CORS errors
     if (err.message === 'Not allowed by CORS') {
+        logger.warn(`CORS blocked request from origin: ${req.headers.origin}`);
         return res.status(403).json({ message: 'CORS forbidden' });
     }
 
     // Server-side logging of unexpected errors
-    console.error('Unhandled server error:', err);
+    logger.error('Unhandled server error:', err);
 
     const isProduction = process.env.NODE_ENV === 'production';
     res.status(err.status || 500).json({
@@ -108,7 +132,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
     const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 }
 
 module.exports = app;

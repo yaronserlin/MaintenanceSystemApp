@@ -8,9 +8,11 @@ const {
     logout,
     me,
     updateProfile,
+    uploadAvatar,
     changePassword,
 } = require('../controllers/authController');
 const { verifyToken } = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware');
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -28,6 +30,7 @@ router.post('/logout', logout);
 // Protected routes
 router.get('/me', verifyToken, me);
 router.put('/me', verifyToken, updateProfile);
+router.post('/me/avatar', verifyToken, upload.single('avatar'), uploadAvatar);
 router.post('/me/change-password', verifyToken, changePassword);
 
 module.exports = router;
