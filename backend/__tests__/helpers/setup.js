@@ -36,6 +36,7 @@ async function registerCompanyAdmin(app, overrides = {}) {
         name: overrides.name || 'Admin User',
         email: overrides.email || uniqueEmail('admin'),
         password: overrides.password || 'password123',
+        agreeToTerms: overrides.agreeToTerms !== undefined ? overrides.agreeToTerms : true,
     };
     const res = await request(app).post('/api/auth/register').send(payload);
     return {

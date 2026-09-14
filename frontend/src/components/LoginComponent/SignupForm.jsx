@@ -13,9 +13,15 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormHelperText from '@mui/material/FormHelperText';
+import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
 import { useAuth } from '../../contexts/AuthContext';
 import useForm from '../../hooks/useForm';
 import { validateName, validateEmail, validatePassword } from '../../utils/validate';
+import LegalModal from '../Legal/LegalModal';
 
 function validateSignup(vals) {
     const errs = {};
@@ -28,6 +34,9 @@ function validateSignup(vals) {
     if (emailErr) errs.email = emailErr;
     const pwdErr = validatePassword(vals.password);
     if (pwdErr) errs.password = pwdErr;
+    if (!vals.agreeToTerms) {
+        errs.agreeToTerms = 'You must agree to the Terms of Service and Privacy Policy to register';
+    }
     return errs;
 }
 
@@ -35,9 +44,11 @@ export default function SignupForm() {
     const { signup, loading } = useAuth();
     const [serverError, setServerError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [legalModalOpen, setLegalModalOpen] = useState(false);
+    const [legalDefaultTab, setLegalDefaultTab] = useState('terms');
 
     const { values, errors, isSubmitting, handleChange, handleSubmit, resetForm } = useForm({
-        initialValues: { companyName: '', name: '', email: '', password: '' },
+        initialValues: { companyName: '', name: '', email: '', password: '', agreeToTerms: false },
         validate: validateSignup,
         onSubmit: async (vals) => {
             setServerError('');
@@ -171,6 +182,67 @@ export default function SignupForm() {
                 }}
             />
 
+            {/* Terms and Privacy Agreement */}
+            <Box sx={{ mt: -0.5 }}>
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            name="agreeToTerms"
+                            checked={Boolean(values.agreeToTerms)}
+                            onChange={(e) => {
+                                if (serverError) setServerError('');
+                                handleChange({
+                                    target: {
+                                        name: 'agreeToTerms',
+                                        value: e.target.checked,
+                                    },
+                                });
+                            }}
+                            color="primary"
+                            size="small"
+                            disabled={busy}
+                        />
+                    }
+                    label={
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                            I agree to the{' '}
+                            <Link
+                                component="button"
+                                type="button"
+                                variant="body2"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setLegalDefaultTab('terms');
+                                    setLegalModalOpen(true);
+                                }}
+                                sx={{ verticalAlign: 'baseline', fontWeight: 600, fontSize: '0.85rem' }}
+                            >
+                                Terms of Service
+                            </Link>
+                            {' '}and{' '}
+                            <Link
+                                component="button"
+                                type="button"
+                                variant="body2"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setLegalDefaultTab('privacy');
+                                    setLegalModalOpen(true);
+                                }}
+                                sx={{ verticalAlign: 'baseline', fontWeight: 600, fontSize: '0.85rem' }}
+                            >
+                                Privacy Policy
+                            </Link>
+                        </Typography>
+                    }
+                />
+                {errors.agreeToTerms && (
+                    <FormHelperText error sx={{ ml: 3.5, mt: -0.5 }}>
+                        {errors.agreeToTerms}
+                    </FormHelperText>
+                )}
+            </Box>
+
             {/* Submit */}
             <Button
                 type="submit"
@@ -190,6 +262,12 @@ export default function SignupForm() {
                     <CircularProgress size={20} thickness={5} sx={{ color: 'rgba(255,255,255,0.8)' }} />
                 ) : 'Create Company Account'}
             </Button>
+
+            <LegalModal
+                open={legalModalOpen}
+                onClose={() => setLegalModalOpen(false)}
+                defaultTab={legalDefaultTab}
+            />
         </Box>
     );
 }

@@ -25,6 +25,7 @@ const AdminDashboard       = lazy(() => import('./pages/AdminDashboard'));
 const OperatorReportsPage  = lazy(() => import('./pages/OperatorReportsPage'));
 const EquipmentBooksPage   = lazy(() => import('./pages/EquipmentBooksPage'));
 const ForcePasswordChangePage = lazy(() => import('./pages/ForcePasswordChangePage'));
+const LegalPage               = lazy(() => import('./pages/LegalPage'));
 import ForcePasswordChangeDialog from './components/Auth/ForcePasswordChangeDialog';
 
 // Preload route chunks in the background to avoid page transition freezes
@@ -104,6 +105,9 @@ function AppLayout({ pages }) {
 
                         {/* Public routes */}
                         <Route path="/login" element={<Login />} />
+                        <Route path="/terms" element={<LegalPage />} />
+                        <Route path="/privacy" element={<LegalPage />} />
+                        <Route path="/legal" element={<LegalPage />} />
                         <Route
                             path="/force-password-change"
                             element={

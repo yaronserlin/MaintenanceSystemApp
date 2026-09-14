@@ -16,19 +16,24 @@ import {
 import LockResetIcon from '@mui/icons-material/LockReset';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Link from '@mui/material/Link';
 import { useAuth } from '../../contexts/AuthContext';
 import apiClient from '../../services/apiClient';
+import LegalModal from '../Legal/LegalModal';
 
 export default function ForcePasswordChangeDialog() {
-    const { user, setUser, logout } = useAuth();
-    const [currentPassword, setCurrentPassword] = useState('');
+    const { user, setUser, logout, loginPassword, clearLoginPassword } = useAuth();
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [showCurrent, setShowCurrent] = useState(false);
+    const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [legalModalOpen, setLegalModalOpen] = useState(false);
+    const [legalDefaultTab, setLegalDefaultTab] = useState('terms');
 
     const open = Boolean(user && user.mustChangePassword);
 
@@ -38,10 +43,6 @@ export default function ForcePasswordChangeDialog() {
         e.preventDefault();
         setError('');
 
-        if (!currentPassword) {
-            setError('Please enter your current temporary password');
-            return;
-        }
         if (!newPassword || newPassword.length < 6) {
             setError('New password must be at least 6 characters');
             return;
@@ -50,14 +51,24 @@ export default function ForcePasswordChangeDialog() {
             setError('New password and confirmation do not match');
             return;
         }
+        if (!agreeToTerms) {
+            setError('You must agree to the Terms of Service and Privacy Policy to continue');
+            return;
+        }
 
         setLoading(true);
         try {
             await apiClient.post('/auth/me/change-password', {
-                currentPassword,
+                currentPassword: loginPassword || undefined,
                 newPassword,
+                agreeToTerms: true,
             });
-            setUser(prev => ({ ...prev, mustChangePassword: false }));
+            clearLoginPassword?.();
+            setUser(prev => ({
+                ...prev,
+                mustChangePassword: false,
+                termsAccepted: true,
+            }));
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update password. Please check your credentials.');
         } finally {
@@ -111,36 +122,12 @@ export default function ForcePasswordChangeDialog() {
 
                     <TextField
                         fullWidth
-                        label="Current Temporary Password"
-                        type={showCurrent ? 'text' : 'password'}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        required
-                        autoFocus
-                        disabled={loading}
-                        InputProps={{
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        onClick={() => setShowCurrent(p => !p)}
-                                        edge="end"
-                                        size="small"
-                                        aria-label="toggle current password visibility"
-                                    >
-                                        {showCurrent ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                                    </IconButton>
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-
-                    <TextField
-                        fullWidth
                         label="New Password (min 6 characters)"
                         type={showNew ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         required
+                        autoFocus
                         disabled={loading}
                         InputProps={{
                             endAdornment: (
@@ -181,6 +168,56 @@ export default function ForcePasswordChangeDialog() {
                             ),
                         }}
                     />
+
+                    {/* Terms and Privacy Agreement Checkbox */}
+                    <Box sx={{ mt: 0.5 }}>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={agreeToTerms}
+                                    onChange={(e) => {
+                                        if (error) setError('');
+                                        setAgreeToTerms(e.target.checked);
+                                    }}
+                                    color="primary"
+                                    size="small"
+                                    disabled={loading}
+                                />
+                            }
+                            label={
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                                    I agree to the{' '}
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="body2"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setLegalDefaultTab('terms');
+                                            setLegalModalOpen(true);
+                                        }}
+                                        sx={{ verticalAlign: 'baseline', fontWeight: 600, fontSize: '0.85rem' }}
+                                    >
+                                        Terms of Service
+                                    </Link>
+                                    {' '}and{' '}
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="body2"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setLegalDefaultTab('privacy');
+                                            setLegalModalOpen(true);
+                                        }}
+                                        sx={{ verticalAlign: 'baseline', fontWeight: 600, fontSize: '0.85rem' }}
+                                    >
+                                        Privacy Policy
+                                    </Link>
+                                </Typography>
+                            }
+                        />
+                    </Box>
                 </DialogContent>
 
                 <DialogActions sx={{ px: 3, py: 2, flexDirection: 'column', gap: 1 }}>
@@ -206,6 +243,12 @@ export default function ForcePasswordChangeDialog() {
                     </Button>
                 </DialogActions>
             </Box>
+
+            <LegalModal
+                open={legalModalOpen}
+                onClose={() => setLegalModalOpen(false)}
+                defaultTab={legalDefaultTab}
+            />
         </Dialog>
     );
 }

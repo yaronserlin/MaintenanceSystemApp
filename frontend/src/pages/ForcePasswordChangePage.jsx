@@ -17,23 +17,28 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Link from '@mui/material/Link';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
 import { formatUserName } from '../utils/formatUtils';
+import LegalModal from '../components/Legal/LegalModal';
 
 export default function ForcePasswordChangePage() {
-    const { user, setUser, logout } = useAuth();
+    const { user, setUser, logout, loginPassword, clearLoginPassword } = useAuth();
     const navigate = useNavigate();
 
-    const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [showCurrent, setShowCurrent] = useState(false);
+    const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [legalModalOpen, setLegalModalOpen] = useState(false);
+    const [legalDefaultTab, setLegalDefaultTab] = useState('terms');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -47,14 +52,24 @@ export default function ForcePasswordChangePage() {
             setError('New password and confirmation do not match');
             return;
         }
+        if (!agreeToTerms) {
+            setError('You must agree to the Terms of Service and Privacy Policy to continue');
+            return;
+        }
 
         setLoading(true);
         try {
-            await apiClient.post('/auth/me/change-password', {
-                currentPassword: currentPassword || undefined,
+            const res = await apiClient.post('/auth/me/change-password', {
+                currentPassword: loginPassword || undefined,
                 newPassword,
+                agreeToTerms: true,
             });
-            setUser(prev => ({ ...prev, mustChangePassword: false }));
+            clearLoginPassword?.();
+            setUser(prev => ({
+                ...prev,
+                mustChangePassword: false,
+                termsAccepted: true,
+            }));
             navigate('/dashboard', { replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update password. Please check your credentials.');
@@ -120,36 +135,6 @@ export default function ForcePasswordChangePage() {
                         <TextField
                             fullWidth
                             size="medium"
-                            label="Current Temporary Password (optional)"
-                            type={showCurrent ? 'text' : 'password'}
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            disabled={loading}
-                            placeholder="Enter temporary password if prompted"
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <LockOutlinedIcon sx={{ color: 'text.disabled', fontSize: 20 }} />
-                                    </InputAdornment>
-                                ),
-                                endAdornment: (
-                                    <InputAdornment position="end">
-                                        <IconButton
-                                            onClick={() => setShowCurrent(p => !p)}
-                                            edge="end"
-                                            size="small"
-                                            aria-label="toggle current password visibility"
-                                        >
-                                            {showCurrent ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                                        </IconButton>
-                                    </InputAdornment>
-                                ),
-                            }}
-                        />
-
-                        <TextField
-                            fullWidth
-                            size="medium"
                             label="New Password"
                             type={showNew ? 'text' : 'password'}
                             value={newPassword}
@@ -208,6 +193,56 @@ export default function ForcePasswordChangePage() {
                             }}
                         />
 
+                        {/* Terms and Privacy Agreement Checkbox */}
+                        <Box sx={{ textAlign: 'left', mt: 0.5 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={agreeToTerms}
+                                        onChange={(e) => {
+                                            if (error) setError('');
+                                            setAgreeToTerms(e.target.checked);
+                                        }}
+                                        color="primary"
+                                        size="small"
+                                        disabled={loading}
+                                    />
+                                }
+                                label={
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                                        I agree to the{' '}
+                                        <Link
+                                            component="button"
+                                            type="button"
+                                            variant="body2"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                setLegalDefaultTab('terms');
+                                                setLegalModalOpen(true);
+                                            }}
+                                            sx={{ verticalAlign: 'baseline', fontWeight: 600, fontSize: '0.85rem' }}
+                                        >
+                                            Terms of Service
+                                        </Link>
+                                        {' '}and{' '}
+                                        <Link
+                                            component="button"
+                                            type="button"
+                                            variant="body2"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                setLegalDefaultTab('privacy');
+                                                setLegalModalOpen(true);
+                                            }}
+                                            sx={{ verticalAlign: 'baseline', fontWeight: 600, fontSize: '0.85rem' }}
+                                        >
+                                            Privacy Policy
+                                        </Link>
+                                    </Typography>
+                                }
+                            />
+                        </Box>
+
                         <Button
                             type="submit"
                             variant="contained"
@@ -237,6 +272,12 @@ export default function ForcePasswordChangePage() {
                             Log out and sign in with another account
                         </Button>
                     </Box>
+
+                    <LegalModal
+                        open={legalModalOpen}
+                        onClose={() => setLegalModalOpen(false)}
+                        defaultTab={legalDefaultTab}
+                    />
                 </Paper>
             </Container>
         </Box>

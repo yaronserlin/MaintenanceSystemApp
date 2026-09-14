@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loginPassword, setLoginPassword] = useState('');
     const navigate = useNavigate();
 
     // On mount, check if authenticated session exists via httpOnly cookie or stored token
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }) => {
                     apiClient.setToken(null);
                     setUser(null);
                     setUserId(null);
+                    setLoginPassword('');
                 }
             })
             .finally(() => {
@@ -58,6 +60,9 @@ export const AuthProvider = ({ children }) => {
                 ? emailOrCredentials.password
                 : maybePassword;
 
+            // Preserve the entered password for seamless first-time forced password change
+            setLoginPassword(password || '');
+
             const { data } = await apiClient.post('/auth/login', { email, password });
             const token = data.accessToken || data.token;
             if (token) {
@@ -73,6 +78,7 @@ export const AuthProvider = ({ children }) => {
             }
             return formattedUser;
         } catch (error) {
+            setLoginPassword('');
             if (error.response && error.response.data) {
                 throw new Error(error.response.data.message || 'Login failed, please check your credentials');
             } else {
@@ -84,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Company self-service signup function
-    const signup = async ({ companyName, name, email, password }) => {
+    const signup = async ({ companyName, name, email, password, agreeToTerms }) => {
         setLoading(true);
         try {
             const { data } = await apiClient.post('/auth/register', {
@@ -92,6 +98,7 @@ export const AuthProvider = ({ children }) => {
                 name: formatUserName(name),
                 email,
                 password,
+                agreeToTerms: Boolean(agreeToTerms),
             });
             const token = data.accessToken || data.token;
             if (token) {
@@ -127,6 +134,7 @@ export const AuthProvider = ({ children }) => {
             apiClient.setToken(null);
             setUser(null);
             setUserId(null);
+            setLoginPassword('');
             navigate('/login');
         }
     };
@@ -150,8 +158,23 @@ export const AuthProvider = ({ children }) => {
         });
     };
 
+    const clearLoginPassword = () => {
+        setLoginPassword('');
+    };
+
     return (
-        <AuthContext.Provider value={{ user, setUser: handleSetUser, userId, loading, login, signup, logout, updateAvatar }}>
+        <AuthContext.Provider value={{
+            user,
+            setUser: handleSetUser,
+            userId,
+            loading,
+            login,
+            signup,
+            logout,
+            updateAvatar,
+            loginPassword,
+            clearLoginPassword,
+        }}>
             {children}
         </AuthContext.Provider>
     );
