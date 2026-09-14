@@ -7,6 +7,12 @@
 
 A modern, multi-tenant web application designed for comprehensive industrial and commercial equipment maintenance, fault tracking, preventive maintenance scheduling, and spare parts management.
 
+## Screenshots
+
+| Operations & Maintenance Dashboard | Equipment Fleet Management |
+|:---:|:---:|
+| ![Operations & Maintenance Dashboard](media/demo.png) | ![Equipment Fleet Management](media/equipment.png) |
+
 ---
 
 ## Key Features
