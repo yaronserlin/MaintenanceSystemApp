@@ -1,35 +1,34 @@
-import { Typography } from '@mui/material';
-import Container from '@mui/material/Container';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Typography, Container, Button } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 
 function NotFound() {
-    const navigate = useNavigate()
     return (
         <Container
             sx={{
                 display: 'flex',
-                flexDirection: 'column',   // stack items vertically
-                justifyContent: 'center',  // horizontal centering
-                alignItems: 'center',      // vertical centering
-                height: '95vh',
-                gap: 2,                     // spacing between lines
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '70vh',
+                gap: 2,
                 p: 2,
             }}
         >
-            <Typography variant="h1" component="h1" sx={{ fontWeight: "600", letterSpacing: "30px" }}>
+            <Typography variant="h1" component="h1" sx={{ fontWeight: '600', letterSpacing: '20px' }}>
                 404
             </Typography>
-            <Typography variant="h4" component="div">
+            <Typography variant="h5" component="div" color="text.secondary">
                 Page not found
             </Typography>
-            <Typography
-                variant="h4"
-                component="a"
-                onClick={() => navigate('/')}
-                sx={{ textDecoration: 'underline', mt: 1, cursor: 'pointer' }}
+            <Button
+                component={RouterLink}
+                to="/"
+                variant="contained"
+                sx={{ mt: 2 }}
             >
                 Return to home
-            </Typography>
+            </Button>
         </Container>
     );
 }

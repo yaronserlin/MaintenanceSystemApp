@@ -8,15 +8,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import useForm from '../../hooks/useForm';
 import Input from '../From/Input';
 import {
+    validateName,
     validateEmail,
     validatePassword,
 } from '../../utils/validate';
 
-/**
- * LoginForm component handles user authentication.
- */
-export default function LoginForm() {
-    const { login, loading } = useAuth();
+export default function SignupForm() {
+    const { signup, loading } = useAuth();
     const [serverError, setServerError] = useState('');
 
     const {
@@ -27,27 +25,35 @@ export default function LoginForm() {
         handleSubmit,
         resetForm,
     } = useForm({
-        initialValues: { email: '', password: '' },
-        validate: validateLogin,
+        initialValues: { companyName: '', name: '', email: '', password: '' },
+        validate: validateSignup,
         onSubmit: submitForm,
     });
 
-    function validateLogin(vals) {
+    function validateSignup(vals) {
         const fieldErrors = {};
+        if (!vals.companyName || vals.companyName.trim().length < 2) {
+            fieldErrors.companyName = 'Company name must be at least 2 characters';
+        }
+        const nameErr = validateName(vals.name);
+        if (nameErr) fieldErrors.name = nameErr;
+
         const emailErr = validateEmail(vals.email);
         if (emailErr) fieldErrors.email = emailErr;
+
         const pwdErr = validatePassword(vals.password);
         if (pwdErr) fieldErrors.password = pwdErr;
+
         return fieldErrors;
     }
 
     async function submitForm(vals) {
         setServerError('');
         try {
-            await login(vals.email, vals.password);
+            await signup(vals);
             resetForm();
         } catch (err) {
-            setServerError(err.message || 'Login failed');
+            setServerError(err.message || 'Signup failed');
         }
     }
 
@@ -72,13 +78,33 @@ export default function LoginForm() {
                 noValidate
                 sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
             >
+                <Input.Text
+                    name="companyName"
+                    label="Company Name"
+                    value={values.companyName}
+                    onChange={handleInputChange}
+                    required
+                    error={Boolean(errors.companyName)}
+                    helperText={errors.companyName}
+                />
+
+                <Input.Text
+                    name="name"
+                    label="Admin Full Name"
+                    value={values.name}
+                    onChange={handleInputChange}
+                    required
+                    error={Boolean(errors.name)}
+                    helperText={errors.name}
+                />
+
                 <Input.Email
                     name="email"
                     label="Email"
                     value={values.email}
                     onChange={handleInputChange}
                     required
-                    error={errors.email}
+                    error={Boolean(errors.email)}
                     helperText={errors.email}
                 />
 
@@ -88,7 +114,7 @@ export default function LoginForm() {
                     value={values.password}
                     onChange={handleInputChange}
                     required
-                    error={errors.password}
+                    error={Boolean(errors.password)}
                     helperText={errors.password}
                 />
 
@@ -98,7 +124,7 @@ export default function LoginForm() {
                     fullWidth
                     disabled={isSubmitting || loading}
                 >
-                    {isSubmitting || loading ? 'Logging in...' : 'Login'}
+                    {isSubmitting || loading ? 'Creating Company…' : 'Create Company'}
                 </Button>
             </Box>
         </>

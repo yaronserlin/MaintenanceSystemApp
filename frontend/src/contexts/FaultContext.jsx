@@ -1,21 +1,21 @@
-
 // src/contexts/FaultContext.jsx
-
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import faultService from '../services/faultsService';
 import { useNotify } from './NotificationContext';
+import { useAuth } from './AuthContext';
 import { retry, sortFaultsByOpenAndCreateDate } from '../utils';
 
 const FaultContext = createContext();
 
 export function FaultProvider({ children }) {
     const notify = useNotify();
+    const { user } = useAuth();
     const [faults, setFaults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Fetch all faults once
     const fetchFaults = useCallback(async () => {
+        if (!user) return;
         setLoading(true);
         setError(null);
         try {
@@ -27,19 +27,28 @@ export function FaultProvider({ children }) {
         } finally {
             setLoading(false);
         }
-    }, [notify]);
+    }, [user, notify]);
 
     useEffect(() => {
-        fetchFaults();
-    }, [fetchFaults]);
+        if (user) {
+            fetchFaults();
+        } else {
+            setFaults([]);
+            setError(null);
+            setLoading(false);
+        }
+    }, [user, fetchFaults]);
 
     const createFault = useCallback(async (faultData) => {
         try {
             const newFault = await retry(() => faultService.create(faultData));
-            setFaults(prev => [...prev, newFault]);
+            setFaults(prev => [newFault, ...prev]);
+            notify.success('Fault created successfully');
+            return newFault;
         } catch (err) {
             setError(err);
             notify.error('Failed to create fault');
+            throw err;
         }
     }, [notify]);
 
@@ -47,9 +56,12 @@ export function FaultProvider({ children }) {
         try {
             const updated = await retry(() => faultService.update(id, updates));
             setFaults(prev => prev.map(f => f._id === id ? updated : f));
+            notify.success('Fault updated successfully');
+            return updated;
         } catch (err) {
             setError(err);
             notify.error('Failed to update fault');
+            throw err;
         }
     }, [notify]);
 
@@ -57,20 +69,24 @@ export function FaultProvider({ children }) {
         try {
             await retry(() => faultService.delete(id));
             setFaults(prev => prev.filter(f => f._id !== id));
+            notify.success('Fault deleted');
         } catch (err) {
             setError(err);
             notify.error('Failed to delete fault');
+            throw err;
         }
     }, [notify]);
 
-    // const closeFault = useCallback((id) => updateFault(id, { status: 'closed' }), [updateFault]);
-    const closeFault = useCallback(async (id, updates) => {
+    const closeFault = useCallback(async (id) => {
         try {
             const updated = await retry(() => faultService.close(id));
             setFaults(prev => prev.map(f => f._id === id ? updated : f));
+            notify.success('Fault closed');
+            return updated;
         } catch (err) {
             setError(err);
             notify.error('Failed to close fault');
+            throw err;
         }
     }, [notify]);
 
@@ -92,27 +108,20 @@ export function useFault(toolId) {
     const context = useContext(FaultContext);
     if (!context) throw new Error('useFault must be used within FaultProvider');
     const { faults, ...rest } = context;
-    if (faults == null || faults === undefined) {
-        console.warn('Faults not available in context');
-        return { faults: [], ...rest };
-    }
-    if (faults.length === 0) {
-        console.warn('No faults available in context');
-        return { faults: [], ...rest };
-    }
-    const filteredFaults = toolId ?
-        faults.filter(f => {
-            const t = f.tool;
-            if (!t) {
-                console.warn(`Fault ${f._id} has no associated tool`);
-                return false;
-            }
-            return (
-                (typeof t === 'string' ? t : t._id)
-                === toolId
-            );
-        })
-        : faults;
-    const sortedFaults = sortFaultsByOpenAndCreateDate(filteredFaults);
-    return { faults: sortedFaults, ...rest };
+
+    const filteredFaults = useMemo(() => {
+        if (!faults || faults.length === 0) return [];
+        const filtered = toolId
+            ? faults.filter(f => {
+                const t = f.tool;
+                if (!t) return false;
+                return (typeof t === 'string' ? t : t._id) === toolId;
+            })
+            : faults;
+        return sortFaultsByOpenAndCreateDate(filtered);
+    }, [faults, toolId]);
+
+    return { faults: filteredFaults, ...rest };
 }
+
+export default FaultContext;

@@ -48,13 +48,16 @@ export function sortFaultsByOpenAndCreateDate(arr) {
  * @throws {Error} The last encountered error if all retries are exhausted.
  */
 export async function retry(fn, retries = 3, delay = 500, factor = 5) {
-    // Log the retry parameters for debugging purposes
-    console.log(`Retrying function ${fn.name} up to ${retries} times with initial delay ${delay}ms`);
-
     try {
         // Attempt to execute the provided function
         return await fn();
     } catch (err) {
+        // Do not retry client auth or missing resource errors
+        const status = err?.response?.status;
+        if (status === 401 || status === 403 || status === 404) {
+            throw err;
+        }
+
         // If there are retries left, wait and retry
         if (retries > 0) {
             // Delay using a Promise-based timeout

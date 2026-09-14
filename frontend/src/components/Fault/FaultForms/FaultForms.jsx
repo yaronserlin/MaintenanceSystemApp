@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, Button } from '@mui/material';
-import toolsService from '../../../services/toolsService';
+import { Box, TextField, Button, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { useTool } from '../../../contexts/ToolContext';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -17,29 +17,9 @@ const VisuallyHiddenInput = styled('input')({
 });
 
 /**
- * Shared form fields for both create and update fault forms.
- * @param {{ values: Object, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }} props
+ * Shared form fields for fault forms.
  */
-function FaultFormFields({ values, onChange }) {
-    const [tools, setTools] = useState([]);
-    useEffect(() => {
-        // Fetch tools from an API or service
-        async function fetchTools() {
-            try {
-                const response = await toolsService.getAll();
-                setTools(response);
-            } catch (error) {
-                console.error('Error fetching tools:', error);
-            }
-        }
-        fetchTools();
-    }, []);
-
-    useEffect(() => {
-        if (tools.length && !values.tool) {
-            onChange({ target: { name: 'tool', value: tools[0]._id } });
-        }
-    }, [tools]);
+function FaultFormFields({ values, onChange, tools = [] }) {
     return (
         <Box display="flex" flexDirection="column" gap={2}>
             {/* Tool selector */}
@@ -56,7 +36,7 @@ function FaultFormFields({ values, onChange }) {
                 </option>
                 {tools.map(tool => (
                     <option key={tool._id} value={tool._id}>
-                        {tool.name} ({tool.localSerialNumber})
+                        {tool.name} {tool.localSerialNumber ? `(${tool.localSerialNumber})` : ''}
                     </option>
                 ))}
             </TextField>
@@ -83,29 +63,28 @@ function FaultFormFields({ values, onChange }) {
 
             <Button
                 component="label"
-                role={undefined}
-                variant="contained"
-                tabIndex={-1}
+                variant="outlined"
                 startIcon={<CloudUploadIcon />}
             >
-                Upload files
+                {values.files && values.files.length > 0
+                    ? `${values.files.length} file(s) selected`
+                    : 'Upload Photos'}
                 <VisuallyHiddenInput
                     type="file"
-                    id='photos'
-                    name="photos"
-
+                    id="photosFiles"
+                    name="photosFiles"
+                    accept="image/*"
                     onChange={onChange}
                     multiple
                 />
             </Button>
 
-
             {/* Photo URLs, comma-separated */}
             <TextField
-                label="Photos (comma-separated URLs)"
-                name="photos"
+                label="Photo URLs (optional, comma-separated)"
+                name="photoUrls"
                 helperText="Enter full URLs separated by commas"
-                value={values.photos}
+                value={values.photoUrls}
                 onChange={onChange}
             />
 
@@ -123,61 +102,75 @@ function FaultFormFields({ values, onChange }) {
             </TextField>
 
             {/* Closed date, if status is closed */}
-            <TextField
-                label="Closed At"
-                name="closedAt"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={values.closedAt}
-                onChange={onChange}
-                disabled={values.status !== 'closed'}
-            />
+            {values.status === 'closed' && (
+                <TextField
+                    label="Closed At"
+                    name="closedAt"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={values.closedAt}
+                    onChange={onChange}
+                />
+            )}
         </Box>
     );
 }
 
 /**
  * Form for creating a new Fault.
- * @param {{ onSubmit: (faultData: any) => void }} props
  */
 export function CreateFaultForm({ onSubmit, toolId }) {
+    const { tools = [] } = useTool();
     const [values, setValues] = useState({
-        tool: toolId || "",
+        tool: toolId || (tools.length > 0 ? tools[0]._id : ''),
         code: '',
         description: '',
-        photos: '',
+        photoUrls: '',
+        files: [],
         status: 'open',
         closedAt: '',
     });
 
+    useEffect(() => {
+        if (!values.tool && tools.length > 0) {
+            setValues(prev => ({ ...prev, tool: toolId || tools[0]._id }));
+        }
+    }, [tools, toolId, values.tool]);
+
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setValues((prev) => ({ ...prev, [name]: value }));
+        if (e.target.type === 'file') {
+            const selectedFiles = Array.from(e.target.files || []);
+            setValues(prev => ({ ...prev, files: selectedFiles }));
+        } else {
+            const { name, value } = e.target;
+            setValues(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!values.code.trim() || !values.description.trim()) return;
+        if (!values.description.trim()) return;
+
+        const photosFromUrls = values.photoUrls
+            ? values.photoUrls.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
 
         onSubmit({
             tool: values.tool,
             code: values.code,
             description: values.description,
-            photos: values.photos
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean),
+            photos: photosFromUrls,
+            files: values.files,
             status: values.status,
-            closedAt:
-                values.status === 'closed' && values.closedAt
-                    ? new Date(values.closedAt)
-                    : undefined,
+            closedAt: values.status === 'closed' && values.closedAt
+                ? new Date(values.closedAt)
+                : undefined,
         });
     };
 
     return (
         <Box component="form" onSubmit={handleSubmit} p={2} maxWidth={600}>
-            <FaultFormFields values={values} onChange={handleChange} />
+            <FaultFormFields values={values} onChange={handleChange} tools={tools} />
             <Box mt={3}>
                 <Button type="submit" variant="contained">
                     Create Fault
@@ -187,70 +180,4 @@ export function CreateFaultForm({ onSubmit, toolId }) {
     );
 }
 
-/**
- * Form for updating an existing Fault.
- * @param {{ initialData: any, onSubmit: (faultData: any) => void }} props
- */
-export function UpdateFaultForm({ initialData = {}, onSubmit }) {
-    const [values, setValues] = useState({
-        tool: '',
-        code: '',
-        description: '',
-        photos: '',
-        status: 'open',
-        closedAt: '',
-    });
-
-    useEffect(() => {
-        if (initialData) {
-            setValues({
-                tool: initialData.tool || '',
-                code: initialData.code || '',
-                description: initialData.description || '',
-                photos: Array.isArray(initialData.photos)
-                    ? initialData.photos.join(', ')
-                    : '',
-                status: initialData.status || 'open',
-                closedAt: initialData.closedAt
-                    ? initialData.closedAt.slice(0, 10)
-                    : '',
-            });
-        }
-    }, [initialData]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setValues((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!values.code.trim() || !values.description.trim()) return;
-
-        onSubmit({
-            tool: values.tool,
-            code: values.code,
-            description: values.description,
-            photos: values.photos
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean),
-            status: values.status,
-            closedAt:
-                values.status === 'closed' && values.closedAt
-                    ? new Date(values.closedAt)
-                    : undefined,
-        });
-    };
-
-    return (
-        <Box component="form" onSubmit={handleSubmit} p={2} maxWidth={600}>
-            <FaultFormFields values={values} onChange={handleChange} />
-            <Box mt={3}>
-                <Button type="submit" variant="contained">
-                    Update Fault
-                </Button>
-            </Box>
-        </Box>
-    );
-}
+export default CreateFaultForm;

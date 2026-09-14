@@ -2,86 +2,166 @@
 const Fault = require('../models/Fault');
 const Tool = require('../models/Tool');
 
-exports.getAllFaults = async (req, res) => {
-    const faults = await Fault.find().populate('operator');
-    res.json(faults);
-};
-
-exports.getFaultById = async (req, res) => {
-    const fault = await Fault.findById(req.params.id).populate('tool operator');
-    if (!fault) return res.status(404).json({ message: 'Fault not found' });
-    res.json(fault);
-};
-
-/**
- * Create a new fault and associate it with the tool and the operator.
- */
-exports.createFault = async (req, res, next) => {
+exports.getAllFaults = async (req, res, next) => {
     try {
-        console.log('Creating fault with body:', req.body);
+        const { page, limit, status } = req.query;
+        const query = { companyId: req.user.companyId };
+        if (status) {
+            query.status = status;
+        }
 
-        // Gather photo paths if any were uploaded
-        // const photos = req.files ? req.files.map(f => f.path) : [];
-        // const photos = req.body.photos || []; // Assuming photos are sent in the request body
+        if (page || limit) {
+            const pageNum = Math.max(1, parseInt(page, 10) || 1);
+            const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+            const skip = (pageNum - 1) * limitNum;
 
-        // Create the fault, setting operator from the authenticated user
-        const fault = await Fault.create({
-            ...req.body,
-            operator: req.user.userId,
-        });
+            const [faults, total] = await Promise.all([
+                Fault.find(query)
+                    .populate('tool', 'name serialNumber model')
+                    .populate('operator', 'name email role')
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limitNum),
+                Fault.countDocuments(query),
+            ]);
 
-        // Push the new fault’s _id into the Tool's faults array
-        await Tool.findByIdAndUpdate(
-            req.body.tool,
-            { $push: { faults: fault._id } },
-            { new: true }  // return the updated tool if you need it
-        );
+            return res.json({
+                faults,
+                page: pageNum,
+                limit: limitNum,
+                total,
+                pages: Math.ceil(total / limitNum),
+            });
+        }
 
-        res.status(201).json(fault);
+        const faults = await Fault.find(query)
+            .populate('tool', 'name serialNumber model')
+            .populate('operator', 'name email role')
+            .sort({ createdAt: -1 });
+
+        res.json(faults);
     } catch (err) {
         next(err);
     }
 };
 
-// controllers/faultController.js
-exports.closeFault = async (req, res) => {
-    const fault = await Fault.findByIdAndUpdate(
-        req.params.id,
-        {
-            status: 'closed',
-            closedAt: Date.now(),    // ← record the timestamp
-        },
-        { new: true }
-    );
-    res.json(fault);
+exports.getFaultById = async (req, res, next) => {
+    try {
+        const fault = await Fault.findOne({ _id: req.params.id, companyId: req.user.companyId })
+            .populate('tool')
+            .populate('operator', 'name email role');
+
+        if (!fault) {
+            return res.status(404).json({ message: 'Fault not found' });
+        }
+        res.json(fault);
+    } catch (err) {
+        next(err);
+    }
 };
 
-/**
- * Delete a fault and disassociate it from its tool.
- *
- * 1. Find the fault to get its associated tool ID.
- * 2. Remove the fault document.
- * 3. Pull the fault ID out of the Tool's faults array.
- * 4. Return a success message.
- */
-exports.deleteFault = async (req, res, next) => {
+exports.createFault = async (req, res, next) => {
     try {
-        const faultId = req.params.id;
+        if (!req.body || typeof req.body !== 'object') {
+            return res.status(400).json({ message: 'No data provided' });
+        }
 
-        // 1. Find the fault to get its tool reference
-        const fault = await Fault.findById(faultId);
-        if (!fault) return res.status(404).json({ message: 'Fault not found' });
+        const { tool: toolId, description, code, photos: bodyPhotos } = req.body;
 
-        // 2. Delete the fault document
-        await Fault.findByIdAndDelete(faultId);
+        if (!description || typeof description !== 'string' || description.trim().length === 0) {
+            return res.status(400).json({ message: 'Description is required' });
+        }
 
-        // 3. Remove the fault ID from the Tool's faults array
-        await Tool.findByIdAndUpdate(
-            fault.tool,
-            { $pull: { faults: faultId } }
+        if (!toolId) {
+            return res.status(400).json({ message: 'Tool reference is required' });
+        }
+
+        // Validate that the tool belongs to this company
+        const tool = await Tool.findOne({ _id: toolId, companyId: req.user.companyId });
+        if (!tool) {
+            return res.status(400).json({ message: 'Referenced tool does not exist in your organization' });
+        }
+
+        // Gather uploaded photo paths / filenames
+        const uploadedPhotos = req.files ? req.files.map(f => `/uploads/${f.filename}`) : [];
+
+        // Parse any photo URLs sent in the body
+        let additionalPhotos = [];
+        if (bodyPhotos) {
+            if (Array.isArray(bodyPhotos)) {
+                additionalPhotos = bodyPhotos.filter(p => typeof p === 'string' && p.trim().length > 0);
+            } else if (typeof bodyPhotos === 'string') {
+                additionalPhotos = bodyPhotos.split(',').map(s => s.trim()).filter(Boolean);
+            }
+        }
+
+        const allPhotos = [...uploadedPhotos, ...additionalPhotos];
+
+        const fault = await Fault.create({
+            companyId: req.user.companyId,
+            tool: tool._id,
+            operator: req.user.userId,
+            description: description.trim(),
+            code: code && typeof code === 'string' ? code.trim() : undefined,
+            photos: allPhotos,
+            status: 'open',
+        });
+
+        // Atomically push fault into Tool backref
+        await Tool.findOneAndUpdate(
+            { _id: tool._id, companyId: req.user.companyId },
+            { $push: { faults: fault._id } }
         );
 
-        // 4. Respond
+        const populatedFault = await Fault.findById(fault._id)
+            .populate('tool', 'name serialNumber model')
+            .populate('operator', 'name email role');
+
+        res.status(201).json(populatedFault);
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.closeFault = async (req, res, next) => {
+    try {
+        const fault = await Fault.findOneAndUpdate(
+            { _id: req.params.id, companyId: req.user.companyId },
+            {
+                status: 'closed',
+                closedAt: new Date(),
+            },
+            { new: true, runValidators: true }
+        ).populate('tool operator');
+
+        if (!fault) {
+            return res.status(404).json({ message: 'Fault not found' });
+        }
+
+        res.json(fault);
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.deleteFault = async (req, res, next) => {
+    try {
+        const fault = await Fault.findOneAndDelete({
+            _id: req.params.id,
+            companyId: req.user.companyId,
+        });
+
+        if (!fault) {
+            return res.status(404).json({ message: 'Fault not found' });
+        }
+
+        if (fault.tool) {
+            await Tool.findOneAndUpdate(
+                { _id: fault.tool, companyId: req.user.companyId },
+                { $pull: { faults: fault._id } }
+            );
+        }
+
         res.json({ message: 'Fault deleted successfully' });
     } catch (err) {
         next(err);

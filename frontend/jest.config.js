@@ -1,6 +1,9 @@
 // jest.config.js
-export default 'jsdom';
-export const transform = {
-    '^.+\\.jsx?$': 'babel-jest'
+export default {
+  testEnvironment: 'jest-environment-jsdom',
+  transform: {
+    '^.+\\.jsx?$': 'babel-jest',
+  },
+  moduleFileExtensions: ['js', 'jsx'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };
-export const moduleFileExtensions = ['js', 'jsx'];

@@ -1,4 +1,3 @@
-
 // src/pages/AccountPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Box, TextField, Button, Alert } from '@mui/material';
@@ -14,17 +13,18 @@ export default function AccountPage() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (user) setForm({ name: user.name, email: user.email });
+        if (user) setForm({ name: user.name || '', email: user.email || '' });
     }, [user]);
 
     const handleChange = e => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
     const handlePwdChange = e => setPwd(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-    const updateProfile = async () => {
+    const handleUpdateProfile = async (e) => {
+        if (e) e.preventDefault();
         setLoading(true); setMsg(null); setError(null);
         try {
             const { data } = await apiClient.put('/auth/me', form);
-            setUser(data);
+            setUser(prev => ({ ...prev, ...data }));
             setMsg('Profile updated successfully');
         } catch (err) {
             setError(err.response?.data?.message || 'Update failed');
@@ -33,7 +33,8 @@ export default function AccountPage() {
         }
     };
 
-    const changePassword = async () => {
+    const handleChangePassword = async (e) => {
+        if (e) e.preventDefault();
         if (pwd.newPassword !== pwd.confirm) {
             setError('New passwords do not match');
             return;
@@ -42,7 +43,7 @@ export default function AccountPage() {
         try {
             const { data } = await apiClient.post('/auth/me/change-password', {
                 currentPassword: pwd.currentPassword,
-                newPassword: pwd.newPassword
+                newPassword: pwd.newPassword,
             });
             setMsg(data.message);
             setPwd({ currentPassword: '', newPassword: '', confirm: '' });
@@ -61,7 +62,7 @@ export default function AccountPage() {
             {msg && <Alert severity="success" sx={{ mb: 2 }}>{msg}</Alert>}
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <Box component="form" sx={{ mb: 4 }}>
+            <Box component="form" onSubmit={handleUpdateProfile} sx={{ mb: 4 }}>
                 <Typography variant="h6">Profile</Typography>
                 <TextField
                     fullWidth
@@ -69,20 +70,25 @@ export default function AccountPage() {
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 2, mt: 1 }}
+                    required
                 />
                 <TextField
                     fullWidth
                     label="Email"
                     name="email"
+                    type="email"
                     value={form.email}
                     onChange={handleChange}
                     sx={{ mb: 2 }}
+                    required
                 />
-                <Button variant="contained" onClick={updateProfile} disabled={loading}>Save</Button>
+                <Button type="submit" variant="contained" disabled={loading}>
+                    Save Profile
+                </Button>
             </Box>
 
-            <Box component="form">
+            <Box component="form" onSubmit={handleChangePassword}>
                 <Typography variant="h6" sx={{ mb: 1 }}>Change Password</Typography>
                 <TextField
                     fullWidth
@@ -91,7 +97,8 @@ export default function AccountPage() {
                     type="password"
                     value={pwd.currentPassword}
                     onChange={handlePwdChange}
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 2, mt: 1 }}
+                    required
                 />
                 <TextField
                     fullWidth
@@ -101,6 +108,7 @@ export default function AccountPage() {
                     value={pwd.newPassword}
                     onChange={handlePwdChange}
                     sx={{ mb: 2 }}
+                    required
                 />
                 <TextField
                     fullWidth
@@ -110,10 +118,12 @@ export default function AccountPage() {
                     value={pwd.confirm}
                     onChange={handlePwdChange}
                     sx={{ mb: 2 }}
+                    required
                 />
-                <Button variant="contained" onClick={changePassword} disabled={loading}>Change Password</Button>
+                <Button type="submit" variant="contained" disabled={loading}>
+                    Change Password
+                </Button>
             </Box>
         </Container>
-    )
+    );
 }
-

@@ -1,4 +1,4 @@
-// src/utils/validators.js
+// src/utils/validate.js
 
 /**
  * Check that a value is not empty.
@@ -27,8 +27,6 @@ export function validateEmail(email) {
     let err = isRequired(email, 'Email');
     if (err) return err;
 
-    // basic RFC-5322-ish pattern
-    // eslint-disable-next-line no-useless-escape
     const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return pattern.test(email)
         ? ''
@@ -37,32 +35,17 @@ export function validateEmail(email) {
 
 /**
  * Validate password strength:
- * - at least 8 chars
- * - at least one lowercase, one uppercase, one digit, one special char
+ * - at least 6 chars
  * @param {string} pwd
  * @returns {string} error message or empty string
  */
 export function validatePassword(pwd) {
-    console.log("password validation called with:", pwd);
-
     let err = isRequired(pwd, 'Password');
     if (err) return err;
 
-    // if (pwd.length < 8) {
-    //     return 'Password must be at least 8 characters.';
-    // }
-    // if (!/[A-Z]/.test(pwd)) {
-    //     return 'Password must contain at least one uppercase letter.';
-    // }
-    // if (!/[a-z]/.test(pwd)) {
-    //     return 'Password must contain at least one lowercase letter.';
-    // }
-    // if (!/[0-9]/.test(pwd)) {
-    //     return 'Password must contain at least one digit.';
-    // }
-    // if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
-    //     return 'Password must contain at least one special character (e.g. !@#$%).';
-    // }
+    if (pwd.length < 6) {
+        return 'Password must be at least 6 characters.';
+    }
     return '';
 }
 
@@ -70,27 +53,25 @@ export function validateName(name) {
     let err = isRequired(name, 'Name');
     if (err) return err;
 
-    // allow letters, spaces, hyphens, apostrophes
     const pattern = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/;
     return pattern.test(name)
         ? ''
         : 'Name can only contain letters, spaces, hyphens, and apostrophes.';
 }
+
 /**
- * role can be: admin, operator,mechanic
- * @param {*} role 
+ * Role can be: admin, operator, mechanic
+ * @param {string} role 
  */
 export function validateRole(role) {
     let err = isRequired(role, 'Role');
     if (err) return err;
 
-    // allow only specific roles
     const validRoles = ['admin', 'operator', 'mechanic'];
     return validRoles.includes(role)
         ? ''
         : `Role must be one of: ${validRoles.join(', ')}.`;
 }
-
 
 /**
  * Generic min-length check for arbitrary fields.

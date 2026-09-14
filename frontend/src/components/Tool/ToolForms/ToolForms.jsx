@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, Button, Typography } from '@mui/material';
+import { Box, TextField, Button } from '@mui/material';
 
 // Generic form fields component (used by both create and update forms)
 function ToolFormFields({ values, onChange }) {
@@ -47,7 +47,7 @@ export function CreateToolForm({ onSubmit }) {
     const [values, setValues] = useState({
         name: '',
         serialNumber: '',
-        loacalSerialNumber: '',
+        localSerialNumber: '',
         model: '',
         description: '',
     });

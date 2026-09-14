@@ -1,15 +1,117 @@
 // controllers/maintenanceController.js
 const Maintenance = require('../models/Maintenance');
+const Tool = require('../models/Tool');
 
-exports.getAllMaintenance = async (req, res) => {
-    const logs = await Maintenance.find().populate('tool mechanic');
-    res.json(logs);
+exports.getAllMaintenance = async (req, res, next) => {
+    try {
+        const { page, limit, toolId } = req.query;
+        const query = { companyId: req.user.companyId };
+        if (toolId) {
+            query.tool = toolId;
+        }
+
+        if (page || limit) {
+            const pageNum = Math.max(1, parseInt(page, 10) || 1);
+            const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+            const skip = (pageNum - 1) * limitNum;
+
+            const [logs, total] = await Promise.all([
+                Maintenance.find(query)
+                    .populate('tool', 'name serialNumber model')
+                    .populate('mechanic', 'name email')
+                    .sort({ date: -1 })
+                    .skip(skip)
+                    .limit(limitNum),
+                Maintenance.countDocuments(query),
+            ]);
+
+            return res.json({
+                logs,
+                page: pageNum,
+                limit: limitNum,
+                total,
+                pages: Math.ceil(total / limitNum),
+            });
+        }
+
+        const logs = await Maintenance.find(query)
+            .populate('tool', 'name serialNumber model')
+            .populate('mechanic', 'name email')
+            .sort({ date: -1 });
+
+        res.json(logs);
+    } catch (err) {
+        next(err);
+    }
 };
 
-exports.createMaintenance = async (req, res) => {
-    const maintenance = await Maintenance.create({
-        ...req.body,
-        mechanic: req.user.userId,
-    });
-    res.status(201).json(maintenance);
+exports.getMaintenanceById = async (req, res, next) => {
+    try {
+        const record = await Maintenance.findOne({ _id: req.params.id, companyId: req.user.companyId })
+            .populate('tool')
+            .populate('mechanic', 'name email');
+
+        if (!record) {
+            return res.status(404).json({ message: 'Maintenance record not found' });
+        }
+        res.json(record);
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.createMaintenance = async (req, res, next) => {
+    try {
+        if (!req.body || typeof req.body !== 'object') {
+            return res.status(400).json({ message: 'No data provided' });
+        }
+
+        const { tool: toolId, details, date } = req.body;
+
+        if (!details || typeof details !== 'string' || details.trim().length === 0) {
+            return res.status(400).json({ message: 'Maintenance details are required' });
+        }
+
+        if (!toolId) {
+            return res.status(400).json({ message: 'Tool reference is required' });
+        }
+
+        const tool = await Tool.findOne({ _id: toolId, companyId: req.user.companyId });
+        if (!tool) {
+            return res.status(400).json({ message: 'Referenced tool does not exist in your organization' });
+        }
+
+        const maintenance = await Maintenance.create({
+            tool: tool._id,
+            mechanic: req.user.userId,
+            details: details.trim(),
+            date: date ? new Date(date) : new Date(),
+            companyId: req.user.companyId,
+        });
+
+        const populated = await Maintenance.findById(maintenance._id)
+            .populate('tool', 'name serialNumber model')
+            .populate('mechanic', 'name email');
+
+        res.status(201).json(populated);
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.deleteMaintenance = async (req, res, next) => {
+    try {
+        const record = await Maintenance.findOneAndDelete({
+            _id: req.params.id,
+            companyId: req.user.companyId,
+        });
+
+        if (!record) {
+            return res.status(404).json({ message: 'Maintenance record not found' });
+        }
+
+        res.json({ message: 'Maintenance record deleted successfully' });
+    } catch (err) {
+        next(err);
+    }
 };

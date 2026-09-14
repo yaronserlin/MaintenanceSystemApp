@@ -1,5 +1,5 @@
-// src/pages/ToolPage.jsx (updated)
-import React, { useState, useEffect, use } from 'react';
+// src/pages/ToolPage.jsx
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Container, Typography, Button, Box, Tabs, Tab } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,7 +24,7 @@ export default function ToolPage() {
     const { user } = useAuth();
 
     const { tools, loading, error: toolError } = useTool();
-    const [tool, setTool] = useState(null);
+    const tool = tools?.find(t => t._id === id);
     const { faults, error: faultError, createFault, deleteFault, closeFault } = useFault(id);
 
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -35,10 +35,6 @@ export default function ToolPage() {
     const handleChange = (event, newValue) => {
         setValue(newValue);
     };
-
-    useEffect(() => {
-        setTool(tools?.find(t => t._id === id));
-    }, [id, tools, faults, toolError, faultError]);
 
     const handleFaultClick = (fault) => {
         setSelectedFault(fault);
@@ -62,42 +58,25 @@ export default function ToolPage() {
     };
 
     const handleCreateSubmit = async (values) => {
-        console.log('Creating fault with values:', values, user);
-        if (!user) {
-            console.error('User not authenticated');
-            return;
-        }
-        if (!tool) {
-            console.error('Tool not found');
-            return;
-        }
+        if (!user || !tool) return;
+        if (!values.description || !values.code) return;
+
         const data = {
             ...values,
             tool: tool._id,
-            operator: user.id,
+            operator: user.id || user._id,
         };
-        console.log('Submitting fault creation:', data);
-        if (!data.description || !data.code) {
-            console.error('Description and code are required');
-            return;
-        }
 
-        await createFault({
-            ...data
-        })
+        await createFault(data);
         handleCloseAll();
     };
 
     if (loading) {
-        return (
-            <LoadingComponent />
-        );
+        return <LoadingComponent />;
     }
 
     if (faultError || toolError) {
-        return (
-            <ErrorComponent message={faultError || toolError} />
-        );
+        return <ErrorComponent message={faultError || toolError} />;
     }
 
     if (!tool) {

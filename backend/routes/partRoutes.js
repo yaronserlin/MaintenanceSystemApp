@@ -2,16 +2,19 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/authMiddleware');
+const { validateObjectId } = require('../middleware/validationMiddleware');
 const {
-  getAllParts,
-  createPart,
-  updatePart,
-  deletePart,
+    getAllParts,
+    createPart,
+    updatePart,
+    deletePart,
 } = require('../controllers/partController');
 
-router.get('/', verifyToken, getAllParts);
-router.post('/', verifyToken, createPart);
-router.put('/:id', verifyToken, updatePart);
-router.delete('/:id', verifyToken, deletePart);
+router.use(verifyToken);
+
+router.get('/', getAllParts);
+router.post('/', createPart);
+router.put('/:id', validateObjectId('id'), updatePart);
+router.delete('/:id', validateObjectId('id'), deletePart);
 
 module.exports = router;

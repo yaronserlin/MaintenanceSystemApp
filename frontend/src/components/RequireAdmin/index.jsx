@@ -5,20 +5,13 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function RequireAdmin({ children }) {
     const { user } = useAuth();
 
-    // Debugging: Log the user object to see its properties
-    // console.log('RequireAdmin user:', user);
-
-    // If user is not logged in or not an admin, redirect accordingly
-    if (!user || user.role === undefined) {
-        console.warn('User is not authenticated or role is undefined');
+    if (!user) {
         return <Navigate to="/login" replace />;
     }
-    // If user is not an admin, redirect to dashboard
-    if (user.role !== 'admin') {
-        console.warn('User is not an admin, redirecting to dashboard');
-        return <Navigate to="/dashboard" replace />;
 
+    if (user.role !== 'admin') {
+        return <Navigate to="/tools" replace />;
     }
-    // If user is an admin, render the children components
+
     return children;
 }

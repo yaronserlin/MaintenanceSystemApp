@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# Mongo binaries for testing
+.mongo-binaries/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
