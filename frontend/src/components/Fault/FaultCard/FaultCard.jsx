@@ -183,7 +183,7 @@ export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault,
                         )}
                     </Box>
 
-                    {onDeleteFault && (
+                    {isMechOrAdmin && onDeleteFault && (
                         <Button
                             size="small"
                             variant="text"

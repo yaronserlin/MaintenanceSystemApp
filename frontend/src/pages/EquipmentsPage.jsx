@@ -45,6 +45,7 @@ export default function EquipmentsPage() {
 
     // Fetch open faults to mark equipment statuses
     useEffect(() => {
+        if (!user || user.mustChangePassword) return;
         let isMounted = true;
         apiClient.get('/faults')
             .then(res => {
@@ -61,7 +62,7 @@ export default function EquipmentsPage() {
             })
             .catch(() => {});
         return () => { isMounted = false; };
-    }, []);
+    }, [user]);
 
     // Filter equipment by search query and status filter
     const filteredEquipment = useMemo(() => {
@@ -91,8 +92,14 @@ export default function EquipmentsPage() {
         return <ErrorComponent message={error} />;
     }
 
-    if (loading) {
-        return <LoadingComponent message="Loading equipment fleet..." />;
+    if (loading && (!equipment || equipment.length === 0)) {
+        return (
+            <Container sx={{ mt: 4, mb: 6 }}>
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+                    <LoadingComponent message="Loading equipment fleet..." />
+                </Box>
+            </Container>
+        );
     }
 
     const faultyCount = Object.keys(openFaultsByTool).length;

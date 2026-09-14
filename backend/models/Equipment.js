@@ -35,6 +35,7 @@ const EquipmentSchema = new mongoose.Schema({
             text: { type: String, required: true, trim: true },
             done: { type: Boolean, default: false },
         }],
+        inProgressNotes: { type: String, trim: true, default: '' },
     }],
     faults: [{
         type: mongoose.Schema.Types.ObjectId,

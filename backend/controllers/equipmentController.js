@@ -4,6 +4,7 @@ const Tool = Equipment;
 const Fault = require('../models/Fault');
 const Part = require('../models/Part');
 const Maintenance = require('../models/Maintenance');
+const { syncEquipmentEngineHours } = require('../utils/equipmentEngineHours');
 
 const ALLOWED_EQUIPMENT_FIELDS = ['name', 'serialNumber', 'description', 'model', 'localSerialNumber', 'currentEngineHours'];
 
@@ -64,6 +65,7 @@ exports.getAllTools = async (req, res, next) => {
 
 exports.getToolById = async (req, res, next) => {
     try {
+        await syncEquipmentEngineHours(req.params.id, req.user.companyId);
         const tool = await Equipment.findOne({ _id: req.params.id, companyId: req.user.companyId })
             .populate({
                 path: 'faults',
@@ -295,12 +297,17 @@ exports.completeSchedule = async (req, res, next) => {
             return res.status(404).json({ message: 'Maintenance task not found' });
         }
 
-        const parsedHours = currentEngineHours !== undefined && currentEngineHours !== '' ? parseFloat(currentEngineHours) : tool.currentEngineHours;
-        if (parsedHours && parsedHours > (tool.currentEngineHours || 0)) {
-            tool.currentEngineHours = parsedHours;
+        const parsedHours = currentEngineHours !== undefined && currentEngineHours !== '' && !isNaN(parseFloat(currentEngineHours))
+            ? parseFloat(currentEngineHours)
+            : null;
+        const validHours = (parsedHours !== null && parsedHours >= 0) ? parsedHours : (tool.currentEngineHours || 0);
+
+        // Update equipment's currentEngineHours to the highest recorded reading
+        if (validHours > (tool.currentEngineHours || 0)) {
+            tool.currentEngineHours = validHours;
         }
 
-        task.lastPerformedHours = tool.currentEngineHours;
+        task.lastPerformedHours = validHours;
         task.lastPerformedDate = new Date();
         if (task.intervalHours > 0) {
             task.nextDueHours = tool.currentEngineHours + task.intervalHours;
@@ -311,22 +318,44 @@ exports.completeSchedule = async (req, res, next) => {
             task.nextDueDate = nextDate;
         }
         task.status = 'normal';
-        // Reset checklist items for the next service cycle
+
+        // Capture snapshot of checklist items before resetting
+        const checklistSnapshot = (task.checklist || []).map(item => ({
+            text: item.text,
+            done: Boolean(item.done),
+        }));
+
+        // Reset checklist items and inProgressNotes for the next service cycle (clean checklist)
         if (task.checklist?.length > 0) {
             task.checklist.forEach(item => { item.done = false; });
         }
+        task.inProgressNotes = '';
+        tool.markModified('maintenanceSchedule');
 
-        // Record entry in Maintenance collection
+        let detailsText = `Routine: ${task.title}`;
+        if (task.description && typeof task.description === 'string' && task.description.trim()) {
+            detailsText += ` - ${task.description.trim()}`;
+        }
+        if (notes && typeof notes === 'string' && notes.trim()) {
+            detailsText += `\nNotes: ${notes.trim()}`;
+        }
+
+        // Record entry in Maintenance collection with checklist and service engine hours
         await Maintenance.create({
             companyId: req.user.companyId,
             tool: tool._id,
             mechanic: req.user.userId,
-            details: `Completed service: ${task.title}. ${notes || ''} (At: ${tool.currentEngineHours} engine hrs)`.trim(),
+            details: detailsText,
+            engineHours: validHours,
+            checklist: checklistSnapshot,
             date: new Date(),
         });
 
         await tool.save();
-        res.json(tool);
+
+        // Update equipment's currentEngineHours to highest value recorded in resolved faults or services
+        const updatedTool = await syncEquipmentEngineHours(tool._id, req.user.companyId, validHours);
+        res.json(updatedTool || tool);
     } catch (err) {
         next(err);
     }
@@ -364,6 +393,7 @@ exports.addChecklistItem = async (req, res, next) => {
             return res.status(404).json({ message: 'Maintenance schedule not found' });
         }
         schedule.checklist.push({ text: text.trim(), done: false });
+        equipment.markModified('maintenanceSchedule');
         await equipment.save();
         res.status(201).json({ equipment, schedule });
     } catch (err) {
@@ -387,6 +417,7 @@ exports.toggleChecklistItem = async (req, res, next) => {
             return res.status(404).json({ message: 'Checklist item not found' });
         }
         item.done = !item.done;
+        equipment.markModified('maintenanceSchedule');
         await equipment.save();
         res.json({ equipment, schedule });
     } catch (err) {
@@ -406,6 +437,29 @@ exports.deleteChecklistItem = async (req, res, next) => {
             return res.status(404).json({ message: 'Maintenance schedule not found' });
         }
         schedule.checklist.pull({ _id: itemId });
+        equipment.markModified('maintenanceSchedule');
+        await equipment.save();
+        res.json({ equipment, schedule });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.updateScheduleProgress = async (req, res, next) => {
+    try {
+        const { inProgressNotes } = req.body || {};
+        const equipment = await Equipment.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!equipment) {
+            return res.status(404).json({ message: 'Equipment not found' });
+        }
+        const schedule = equipment.maintenanceSchedule.id(req.params.scheduleId);
+        if (!schedule) {
+            return res.status(404).json({ message: 'Maintenance schedule not found' });
+        }
+        if (inProgressNotes !== undefined) {
+            schedule.inProgressNotes = typeof inProgressNotes === 'string' ? inProgressNotes.trim() : '';
+        }
+        equipment.markModified('maintenanceSchedule');
         await equipment.save();
         res.json({ equipment, schedule });
     } catch (err) {

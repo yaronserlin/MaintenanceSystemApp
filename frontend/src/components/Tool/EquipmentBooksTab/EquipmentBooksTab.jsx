@@ -46,6 +46,7 @@ export default function EquipmentBooksTab({ equipment, tool, onRefresh }) {
     const { user } = useAuth();
     const notify = useNotify();
     const isAdmin = user?.role === 'admin';
+    const canManageBooks = user?.role === 'admin' || user?.role === 'mechanic';
 
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const [bookTitle, setBookTitle] = useState('');
@@ -135,7 +136,7 @@ export default function EquipmentBooksTab({ equipment, tool, onRefresh }) {
         <Box sx={{ py: 2 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={3}>
                 <Typography variant="h6">Equipment Manuals & Books</Typography>
-                {isAdmin && (
+                {canManageBooks && (
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
@@ -149,7 +150,7 @@ export default function EquipmentBooksTab({ equipment, tool, onRefresh }) {
             {books.length === 0 ? (
                 <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
                     No PDF manuals or workshop books uploaded for this equipment.
-                    {isAdmin && ' Click "+ Upload" to attach equipment service documentation.'}
+                    {canManageBooks && ' Click "+ Upload" to attach equipment service documentation.'}
                 </Typography>
             ) : (
                 <Grid container spacing={2}>
@@ -178,13 +179,13 @@ export default function EquipmentBooksTab({ equipment, tool, onRefresh }) {
                                         variant="outlined"
                                         startIcon={<VisibilityIcon />}
                                         onClick={() => setActivePdf({
-                                            title: book.title,
-                                            url: getMediaUrl(book.fileUrl),
+                                             title: book.title,
+                                             url: getMediaUrl(book.fileUrl),
                                         })}
                                     >
                                         View
                                     </Button>
-                                    {isAdmin && (
+                                    {canManageBooks && (
                                         <IconButton
                                             size="small"
                                             color="error"

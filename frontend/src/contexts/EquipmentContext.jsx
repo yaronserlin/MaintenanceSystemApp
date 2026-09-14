@@ -22,7 +22,7 @@ export function EquipmentProvider({ children }) {
     const [error, setError] = useState(null);
 
     const fetchEquipment = useCallback(async () => {
-        if (!user) return;
+        if (!user || user.mustChangePassword) return;
         setLoading(true);
         setError(null);
         try {
@@ -75,7 +75,7 @@ export function EquipmentProvider({ children }) {
     }, [notify]);
 
     useEffect(() => {
-        if (user) {
+        if (user && !user.mustChangePassword) {
             fetchEquipment();
         } else {
             setEquipment([]);

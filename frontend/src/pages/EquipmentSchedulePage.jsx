@@ -33,6 +33,7 @@ import { useNotify } from '../contexts/NotificationContext';
 import equipmentService from '../services/equipmentService';
 import LoadingComponent from '../components/LoadingComponent/LoadingComponent';
 import ErrorComponent from '../components/ErrorComponent/ErrorComponent';
+import ConfirmDialog from '../components/ConfirmDialog/ConfirmDialog';
 
 export default function EquipmentSchedulePage() {
     const { id, scheduleId } = useParams();
@@ -51,6 +52,8 @@ export default function EquipmentSchedulePage() {
         currentEngineHours: '',
         notes: '',
     });
+    const [inProgressNotes, setInProgressNotes] = useState('');
+    const [savingNotes, setSavingNotes] = useState(false);
 
     const canManage = user?.role === 'admin' || user?.role === 'mechanic';
 
@@ -60,6 +63,7 @@ export default function EquipmentSchedulePage() {
             const data = await equipmentService.getSchedule(id, scheduleId);
             setEquipment(data.equipment);
             setSchedule(data.schedule);
+            setInProgressNotes(data.schedule?.inProgressNotes || '');
         } catch (err) {
             console.error('Error loading schedule:', err);
             setError(err.response?.data?.message || 'Failed to load maintenance schedule');
@@ -84,13 +88,53 @@ export default function EquipmentSchedulePage() {
         }
     };
 
-    const handleOpenCompleteDialog = () => {
-        const currentHours = equipment?.currentEngineHours || 0;
+    const handleSaveProgressNotes = async () => {
+        if (!canManage || !id || !scheduleId || savingNotes) return;
+        const currentText = (inProgressNotes || '').trim();
+        const prevText = (schedule?.inProgressNotes || '').trim();
+        if (currentText === prevText) return;
+
+        try {
+            setSavingNotes(true);
+            const data = await equipmentService.updateScheduleProgress(id, scheduleId, {
+                inProgressNotes: inProgressNotes,
+            });
+            if (data?.schedule) {
+                setSchedule(data.schedule);
+            }
+            if (data?.equipment) {
+                setEquipment(data.equipment);
+            }
+            notify.success('Service progress notes saved');
+        } catch (err) {
+            console.error('Failed to save progress notes:', err);
+            notify.error('Failed to save service progress notes');
+        } finally {
+            setSavingNotes(false);
+        }
+    };
+
+    const [confirmIncompleteOpen, setConfirmIncompleteOpen] = useState(false);
+
+    const openCompleteForm = () => {
         setCompletionData({
-            currentEngineHours: String(currentHours),
-            notes: '',
+            currentEngineHours: '',
+            notes: inProgressNotes || schedule?.inProgressNotes || '',
         });
         setCompleteDialogOpen(true);
+    };
+
+    const handleOpenCompleteDialog = () => {
+        const checklist = schedule?.checklist || [];
+        const completedCount = checklist.filter((item) => item.done).length;
+        const hasIncomplete = checklist.length > 0 && completedCount < checklist.length;
+
+        if (hasIncomplete) {
+            setConfirmIncompleteOpen(true);
+            return;
+        }
+
+        openCompleteForm();
     };
 
     const handleConfirmComplete = async (e) => {
@@ -98,14 +142,14 @@ export default function EquipmentSchedulePage() {
         try {
             const currentHours = equipment?.currentEngineHours || 0;
             await equipmentService.completeSchedule(id, scheduleId, {
-                currentEngineHours: completionData.currentEngineHours
+                currentEngineHours: completionData.currentEngineHours !== ''
                     ? parseFloat(completionData.currentEngineHours)
                     : currentHours,
                 notes: completionData.notes,
             });
             notify.success('Service logged and schedule updated');
             setCompleteDialogOpen(false);
-            loadData();
+            navigate(`/equipment/${id}?tab=maintenance`, { state: { tab: 1, refreshedAt: Date.now() }, replace: true });
         } catch (err) {
             console.error('Complete schedule error:', err);
             notify.error('Failed to log completed maintenance');
@@ -127,10 +171,10 @@ export default function EquipmentSchedulePage() {
             <Box mb={2}>
                 <Button
                     startIcon={<ArrowBackIcon />}
-                    onClick={() => navigate(`/equipment/${id}`)}
+                    onClick={() => navigate(`/equipment/${id}?tab=maintenance`, { state: { tab: 1, refreshedAt: Date.now() } })}
                     color="inherit"
                 >
-                    Back to {equipment.name}
+                    Back to Maintenance
                 </Button>
             </Box>
 
@@ -146,7 +190,7 @@ export default function EquipmentSchedulePage() {
                                 Equipment: {equipment.name} (Serial: {equipment.localSerialNumber || equipment.serialNumber || 'N/A'})
                             </Typography>
                         </Box>
-                        <Box display="flex" gap={1} alignItems="center">
+                        <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
                             <Chip
                                 icon={<SpeedIcon />}
                                 label={`Meter: ${currentHours} hrs`}
@@ -158,6 +202,20 @@ export default function EquipmentSchedulePage() {
                                 color={schedule.status === 'overdue' ? 'error' : (schedule.status === 'due_soon' ? 'warning' : 'success')}
                                 sx={{ fontWeight: 700 }}
                             />
+                            {checklist.length > 0 && completedCount > 0 && completedCount < checklist.length && (
+                                <Chip
+                                    label={`IN PROGRESS (${completedCount}/${checklist.length})`}
+                                    color="warning"
+                                    sx={{ fontWeight: 700 }}
+                                />
+                            )}
+                            {checklist.length > 0 && completedCount === checklist.length && (
+                                <Chip
+                                    label="ALL TASKS DONE"
+                                    color="success"
+                                    sx={{ fontWeight: 700 }}
+                                />
+                            )}
                         </Box>
                     </Box>
 
@@ -277,6 +335,41 @@ export default function EquipmentSchedulePage() {
                 )}
             </Paper>
 
+            {/* Service Process Notes (In-Progress) */}
+            <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, mb: 3 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} mb={1}>
+                    <Box>
+                        <Typography variant="h6" fontWeight="bold">
+                            Service Process Notes & Observations
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Notes entered here are saved while the service is in progress and carried forward into the final service record.
+                        </Typography>
+                    </Box>
+                    {canManage && (
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={handleSaveProgressNotes}
+                            disabled={savingNotes}
+                        >
+                            {savingNotes ? 'Saving...' : 'Save Notes'}
+                        </Button>
+                    )}
+                </Box>
+                <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    placeholder="e.g. Inspected fuel filter, noticed slight wear on alternator belt, hydraulic fluid topped up..."
+                    value={inProgressNotes}
+                    onChange={(e) => setInProgressNotes(e.target.value)}
+                    onBlur={handleSaveProgressNotes}
+                    disabled={!canManage}
+                    sx={{ mt: 1 }}
+                />
+            </Paper>
+
             {/* Complete Service Dialog */}
             <Dialog open={completeDialogOpen} onClose={() => setCompleteDialogOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Log Completed Service</DialogTitle>
@@ -290,10 +383,15 @@ export default function EquipmentSchedulePage() {
                             type="number"
                             fullWidth
                             required
-                            inputProps={{ min: currentHours, step: 'any' }}
+                            placeholder={`e.g. ${currentHours}`}
+                            inputProps={{ min: 0, step: 'any' }}
                             value={completionData.currentEngineHours}
                             onChange={(e) => setCompletionData({ ...completionData, currentEngineHours: e.target.value })}
-                            helperText={`Current equipment reading: ${currentHours} hrs`}
+                            helperText={
+                                completionData.currentEngineHours !== '' && parseFloat(completionData.currentEngineHours) < currentHours
+                                    ? `Note: Entered hours (${completionData.currentEngineHours} hrs) are lower than current equipment record (${currentHours} hrs). Log records your input; machine keeps highest.`
+                                    : `Current equipment reading: ${currentHours} hrs`
+                            }
                             sx={{ mb: 2, mt: 1 }}
                         />
                         <TextField
@@ -314,6 +412,21 @@ export default function EquipmentSchedulePage() {
                     </DialogActions>
                 </Box>
             </Dialog>
+
+            {/* Incomplete Checklist Confirmation Dialog */}
+            <ConfirmDialog
+                open={confirmIncompleteOpen}
+                title="Incomplete Checklist Items"
+                message={`Only ${checklist.filter(item => item.done).length} of ${checklist.length} checklist tasks are marked complete. Are you sure you want to complete this service routine without finishing all items?`}
+                confirmText="Complete Service Anyway"
+                cancelText="Back to Checklist"
+                confirmColor="warning"
+                onConfirm={() => {
+                    setConfirmIncompleteOpen(false);
+                    openCompleteForm();
+                }}
+                onCancel={() => setConfirmIncompleteOpen(false)}
+            />
         </Container>
     );
 }

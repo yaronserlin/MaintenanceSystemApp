@@ -19,6 +19,7 @@ const {
     addChecklistItem,
     toggleChecklistItem,
     deleteChecklistItem,
+    updateScheduleProgress,
 } = require('../controllers/equipmentController');
 
 router.use(verifyToken);
@@ -32,14 +33,17 @@ router.put('/:id', validateObjectId('id'), ensureAdmin, updateTool);
 router.delete('/:id', validateObjectId('id'), ensureAdmin, deleteTool);
 
 // Equipment Books (PDFs)
-router.post('/:id/books', validateObjectId('id'), ensureAdmin, upload.single('book'), addBook);
-router.delete('/:id/books/:bookId', validateObjectId('id', 'bookId'), ensureAdmin, deleteBook);
+router.post('/:id/books', validateObjectId('id'), ensureMechanicOrAdmin, upload.single('book'), addBook);
+router.delete('/:id/books/:bookId', validateObjectId('id', 'bookId'), ensureMechanicOrAdmin, deleteBook);
 
 // Equipment Maintenance Schedules
-router.post('/:id/schedules', validateObjectId('id'), ensureAdmin, addSchedule);
+router.post('/:id/schedules', validateObjectId('id'), ensureMechanicOrAdmin, addSchedule);
 router.get('/:id/schedules/:scheduleId', validateObjectId('id', 'scheduleId'), getSchedule);
-router.delete('/:id/schedules/:scheduleId', validateObjectId('id', 'scheduleId'), ensureAdmin, deleteSchedule);
+router.delete('/:id/schedules/:scheduleId', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, deleteSchedule);
 router.post('/:id/schedules/:scheduleId/complete', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, completeSchedule);
+router.patch('/:id/schedules/:scheduleId/progress', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, updateScheduleProgress);
+router.put('/:id/schedules/:scheduleId/progress', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, updateScheduleProgress);
+router.post('/:id/schedules/:scheduleId/progress', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, updateScheduleProgress);
 
 // Schedule Checklist (Todo List) items
 router.post('/:id/schedules/:scheduleId/checklist', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, addChecklistItem);

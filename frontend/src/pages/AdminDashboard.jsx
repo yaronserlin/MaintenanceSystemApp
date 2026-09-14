@@ -7,6 +7,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import adminService from '../services/adminService';
 import UserPanel from '../components/User/UserPanel/UserPanel';
 import ToolsPanel from '../components/Tool/ToolsPanel/ToolsPanel';
+import LoadingComponent from '../components/LoadingComponent/LoadingComponent';
 import { useTool } from '../contexts/ToolContext';
 import { useNotify } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -117,6 +118,16 @@ export default function AdminDashboard() {
         },
         [notify, currentUser, setUser]
     );
+
+    if (loadingUsers && users.length === 0) {
+        return (
+            <Container sx={{ mt: 4, mb: 6 }}>
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+                    <LoadingComponent message="Loading system administration..." />
+                </Box>
+            </Container>
+        );
+    }
 
     return (
         <Container sx={{ mt: 3, mb: 6 }}>

@@ -15,6 +15,8 @@ const FaultSchema = new mongoose.Schema({
     photos: [{ type: String }],
     engineHours: { type: Number, min: 0 },
     closingEngineHours: { type: Number, min: 0 },
+    resolutionDescription: { type: String, trim: true, default: '' },
+    resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     status: { type: String, enum: ['open', 'closed'], default: 'open' },
     closedAt: { type: Date },
 }, { timestamps: true });

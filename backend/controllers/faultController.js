@@ -1,6 +1,7 @@
 // controllers/faultController.js
 const Fault = require('../models/Fault');
 const Tool = require('../models/Tool');
+const { syncEquipmentEngineHours } = require('../utils/equipmentEngineHours');
 
 exports.getAllFaults = async (req, res, next) => {
     try {
@@ -19,6 +20,7 @@ exports.getAllFaults = async (req, res, next) => {
                 Fault.find(query)
                     .populate('tool', 'name serialNumber model')
                     .populate('operator', 'name email role')
+                    .populate('resolvedBy', 'name email role')
                     .sort({ createdAt: -1 })
                     .skip(skip)
                     .limit(limitNum),
@@ -37,6 +39,7 @@ exports.getAllFaults = async (req, res, next) => {
         const faults = await Fault.find(query)
             .populate('tool', 'name serialNumber model')
             .populate('operator', 'name email role')
+            .populate('resolvedBy', 'name email role')
             .sort({ createdAt: -1 });
 
         res.json(faults);
@@ -49,7 +52,8 @@ exports.getFaultById = async (req, res, next) => {
     try {
         const fault = await Fault.findOne({ _id: req.params.id, companyId: req.user.companyId })
             .populate('tool')
-            .populate('operator', 'name email role');
+            .populate('operator', 'name email role')
+            .populate('resolvedBy', 'name email role');
 
         if (!fault) {
             return res.status(404).json({ message: 'Fault not found' });
@@ -111,11 +115,9 @@ exports.createFault = async (req, res, next) => {
             status: 'open',
         });
 
-        // Atomically push fault into Tool backref and update current hours if provided
+        // Atomically push fault into Tool backref without modifying currentEngineHours.
+        // Machine engine hours are only updated when a mechanic/admin resolves the fault and only if higher.
         const toolUpdates = { $push: { faults: fault._id } };
-        if (validHours !== undefined && validHours > (tool.currentEngineHours || 0)) {
-            toolUpdates.$set = { currentEngineHours: validHours };
-        }
         await Tool.findOneAndUpdate(
             { _id: tool._id, companyId: req.user.companyId },
             toolUpdates
@@ -123,7 +125,8 @@ exports.createFault = async (req, res, next) => {
 
         const populatedFault = await Fault.findById(fault._id)
             .populate('tool', 'name serialNumber model currentEngineHours')
-            .populate('operator', 'name email role');
+            .populate('operator', 'name email role')
+            .populate('resolvedBy', 'name email role');
 
         res.status(201).json(populatedFault);
     } catch (err) {
@@ -133,13 +136,16 @@ exports.createFault = async (req, res, next) => {
 
 exports.closeFault = async (req, res, next) => {
     try {
-        const { engineHours } = req.body || {};
+        const { engineHours, resolutionDescription, notes, description: closingDesc } = req.body || {};
         const parsedHours = engineHours !== undefined && engineHours !== '' ? parseFloat(engineHours) : null;
         const validHours = parsedHours !== null && !isNaN(parsedHours) && parsedHours >= 0 ? parsedHours : null;
+        const resText = resolutionDescription || notes || closingDesc || '';
 
         const updateData = {
             status: 'closed',
             closedAt: new Date(),
+            resolvedBy: req.user.userId,
+            resolutionDescription: typeof resText === 'string' ? resText.trim() : '',
         };
         if (validHours !== null) {
             updateData.closingEngineHours = validHours;
@@ -149,35 +155,17 @@ exports.closeFault = async (req, res, next) => {
             { _id: req.params.id, companyId: req.user.companyId },
             updateData,
             { new: true, runValidators: true }
-        ).populate('tool operator');
+        ).populate('tool operator resolvedBy');
 
         if (!fault) {
             return res.status(404).json({ message: 'Fault not found' });
         }
 
-        // If closing engine hours were reported, update the equipment's currentEngineHours and recalculate schedule
-        if (fault.tool && validHours !== null) {
-            const toolDoc = await Tool.findOne({ _id: fault.tool._id || fault.tool, companyId: req.user.companyId });
-            if (toolDoc) {
-                if (validHours > (toolDoc.currentEngineHours || 0)) {
-                    toolDoc.currentEngineHours = validHours;
-                }
-                if (toolDoc.maintenanceSchedule?.length > 0) {
-                    toolDoc.maintenanceSchedule.forEach(task => {
-                        if (task.intervalHours > 0) {
-                            const hoursRemaining = (task.nextDueHours || task.intervalHours) - toolDoc.currentEngineHours;
-                            if (hoursRemaining <= 0) {
-                                task.status = 'overdue';
-                            } else if (hoursRemaining <= 20) {
-                                task.status = 'due_soon';
-                            } else {
-                                task.status = 'normal';
-                            }
-                        }
-                    });
-                }
-                await toolDoc.save();
-            }
+        // Update equipment's currentEngineHours to the highest recorded value in resolved faults or services
+        // (only updates if validHours is higher than current hours)
+        if (fault.tool) {
+            const toolId = fault.tool._id || fault.tool;
+            await syncEquipmentEngineHours(toolId, req.user.companyId, validHours);
         }
 
         res.json(fault);
@@ -192,13 +180,18 @@ exports.reopenFault = async (req, res, next) => {
             { _id: req.params.id, companyId: req.user.companyId },
             {
                 status: 'open',
-                $unset: { closedAt: 1, closingEngineHours: 1 },
+                $unset: { closedAt: 1, closingEngineHours: 1, resolutionDescription: 1, resolvedBy: 1 },
             },
             { new: true, runValidators: true }
-        ).populate('tool operator');
+        ).populate('tool operator resolvedBy');
 
         if (!fault) {
             return res.status(404).json({ message: 'Fault not found' });
+        }
+
+        if (fault.tool) {
+            const toolId = fault.tool._id || fault.tool;
+            await syncEquipmentEngineHours(toolId, req.user.companyId);
         }
 
         res.json(fault);
@@ -219,10 +212,12 @@ exports.deleteFault = async (req, res, next) => {
         }
 
         if (fault.tool) {
+            const toolId = fault.tool._id || fault.tool;
             await Tool.findOneAndUpdate(
-                { _id: fault.tool, companyId: req.user.companyId },
+                { _id: toolId, companyId: req.user.companyId },
                 { $pull: { faults: fault._id } }
             );
+            await syncEquipmentEngineHours(toolId, req.user.companyId);
         }
 
         res.json({ message: 'Fault deleted successfully' });
@@ -250,12 +245,16 @@ exports.updateFault = async (req, res, next) => {
                 updates.engineHours = parsed;
             }
         }
+        if (req.body.resolutionDescription !== undefined) {
+            updates.resolutionDescription = typeof req.body.resolutionDescription === 'string' ? req.body.resolutionDescription.trim() : '';
+        }
         if (req.body.status && ['open', 'closed'].includes(req.body.status)) {
             updates.status = req.body.status;
             if (updates.status === 'closed') {
                 updates.closedAt = new Date();
+                updates.resolvedBy = req.user.userId;
             } else {
-                updates.$unset = { closedAt: 1, closingEngineHours: 1 };
+                updates.$unset = { closedAt: 1, closingEngineHours: 1, resolutionDescription: 1, resolvedBy: 1 };
             }
         }
 
@@ -264,10 +263,16 @@ exports.updateFault = async (req, res, next) => {
             updates,
             { new: true, runValidators: true }
         ).populate('tool', 'name serialNumber model currentEngineHours')
-         .populate('operator', 'name email role');
+         .populate('operator', 'name email role')
+         .populate('resolvedBy', 'name email role');
 
         if (!fault) {
             return res.status(404).json({ message: 'Fault not found' });
+        }
+
+        if (fault.tool) {
+            const toolId = fault.tool._id || fault.tool;
+            await syncEquipmentEngineHours(toolId, req.user.companyId);
         }
 
         res.json(fault);

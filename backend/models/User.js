@@ -8,6 +8,7 @@ const UserSchema = new mongoose.Schema({
     avatar: { type: String, trim: true, default: null },
     password: { type: String, required: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
+    mustChangePassword: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

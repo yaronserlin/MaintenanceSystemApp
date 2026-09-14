@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Container, Typography, Box, Button, Tabs, Tab, Chip, Paper } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -18,6 +18,7 @@ import ConfirmDialog from '../components/ConfirmDialog/ConfirmDialog';
 import { useEquipment } from '../contexts/EquipmentContext';
 import { useFault } from '../contexts/FaultContext';
 import { useAuth } from '../contexts/AuthContext';
+import equipmentService from '../services/equipmentService';
 
 function a11yProps(index) {
     return {
@@ -48,9 +49,11 @@ function TabPanel(props) {
 export default function EquipmentPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const { equipment, loading, error: equipmentError, fetchEquipment } = useEquipment();
-    const { faults, error: faultError, createFault, deleteFault, closeFault, reopenFault } = useFault(id);
+    const { faults, error: faultError, fetchFaults, createFault, deleteFault, closeFault, reopenFault } = useFault(id);
 
     const [selectedFault, setSelectedFault] = useState(null);
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -60,9 +63,49 @@ export default function EquipmentPage() {
     const [faultToDelete, setFaultToDelete] = useState(null);
 
     // Tab state: 0 = Faults, 1 = Maintenance Schedule, 2 = Books & Manuals
-    const [value, setValue] = useState(0);
+    const resolveTab = () => {
+        if (location.state?.tab !== undefined) return Number(location.state.tab);
+        const tabParam = searchParams.get('tab');
+        if (tabParam === 'maintenance') return 1;
+        if (tabParam === 'books' || tabParam === 'manuals') return 2;
+        if (tabParam === 'faults') return 0;
+        return 0;
+    };
 
-    const tool = equipment.find((t) => t._id === id);
+    const [value, setValue] = useState(resolveTab);
+
+    useEffect(() => {
+        setValue(resolveTab());
+    }, [location.search, location.state]);
+
+    const [toolData, setToolData] = useState(null);
+
+    const loadTool = useCallback(async () => {
+        if (!id) return;
+        try {
+            const fresh = await equipmentService.getById(id);
+            setToolData(fresh);
+            return fresh;
+        } catch (err) {
+            console.error('Failed to load equipment details:', err);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        loadTool();
+        fetchEquipment();
+        if (fetchFaults) fetchFaults();
+    }, [loadTool, fetchEquipment, fetchFaults, location.key, location.search, location.state]);
+
+    const tool = toolData || equipment.find((t) => t._id === id);
+
+    const handleRefresh = useCallback(async () => {
+        await Promise.all([
+            loadTool(),
+            fetchEquipment(),
+            fetchFaults ? fetchFaults() : Promise.resolve(),
+        ]);
+    }, [loadTool, fetchEquipment, fetchFaults]);
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
@@ -90,6 +133,7 @@ export default function EquipmentPage() {
         await deleteFault(faultToDelete._id);
         setFaultToDelete(null);
         setDetailDialogOpen(false);
+        await handleRefresh();
     };
 
     const handleOpenCloseDialog = (fault) => {
@@ -97,16 +141,19 @@ export default function EquipmentPage() {
         setCloseDialogOpen(true);
     };
 
-    const handleConfirmCloseFault = async (fault, engineHours) => {
-        await closeFault(fault._id, { engineHours });
+    const handleConfirmCloseFault = async (fault, closeData) => {
+        const payload = typeof closeData === 'object' && closeData !== null
+            ? closeData
+            : { engineHours: closeData };
+        await closeFault(fault._id, payload);
         setCloseDialogOpen(false);
         setFaultToClose(null);
-        fetchEquipment();
+        await handleRefresh();
     };
 
     const handleReopenFault = async (fault) => {
         await reopenFault(fault._id);
-        fetchEquipment();
+        await handleRefresh();
     };
 
     const handleCreateSubmit = async (values) => {
@@ -121,7 +168,7 @@ export default function EquipmentPage() {
 
         await createFault(data);
         handleCloseAll();
-        fetchEquipment();
+        await handleRefresh();
     };
 
     if (loading) {
@@ -170,9 +217,17 @@ export default function EquipmentPage() {
                 }}
             >
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
-                    <Box>
-                        <Box display="flex" alignItems="center" gap={1.5} mb={1}>
-                            <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">
+                    <Box sx={{ minWidth: 0, flex: '1 1 auto' }}>
+                        <Box display="flex" alignItems="center" flexWrap="wrap" gap={1.5} mb={1}>
+                            <Typography
+                                variant="h4"
+                                fontWeight={800}
+                                letterSpacing="-0.02em"
+                                sx={{
+                                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.25rem' },
+                                    wordBreak: 'break-word',
+                                }}
+                            >
                                 {tool.name}
                             </Typography>
                             {tool.localSerialNumber && (
@@ -300,11 +355,11 @@ export default function EquipmentPage() {
                 </TabPanel>
 
                 <TabPanel value={value} index={1}>
-                    <EquipmentMaintenanceTab equipment={tool} tool={tool} onRefresh={fetchEquipment} />
+                    <EquipmentMaintenanceTab equipment={tool} tool={tool} onRefresh={handleRefresh} />
                 </TabPanel>
 
                 <TabPanel value={value} index={2}>
-                    <EquipmentBooksTab equipment={tool} tool={tool} onRefresh={fetchEquipment} />
+                    <EquipmentBooksTab equipment={tool} tool={tool} onRefresh={handleRefresh} />
                 </TabPanel>
             </Box>
 

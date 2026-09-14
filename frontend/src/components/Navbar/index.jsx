@@ -25,16 +25,14 @@ export default function Navbar({ pages = [] }) {
 
     const navPages = useMemo(() => {
         if (user?.role === 'operator') {
-            return ['My Faults', 'Account'];
+            return ['Dashboard', 'My Reports', 'Manuals'];
         }
-        let result = [...pages];
+        const result = ['Dashboard', 'Equipment', 'Manuals'];
         if (user?.role === 'admin') {
-            if (!result.includes('Admin')) result.push('Admin');
-        } else {
-            result = result.filter(p => p !== 'Admin');
+            result.push('Admin');
         }
         return result;
-    }, [pages, user?.role]);
+    }, [user?.role]);
 
     return (
         <AppBar

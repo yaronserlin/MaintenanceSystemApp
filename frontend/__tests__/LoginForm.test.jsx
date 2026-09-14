@@ -32,19 +32,19 @@ describe('LoginForm', () => {
         render(<LoginForm />);
         expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /sign in|login/i })).toBeInTheDocument();
     });
 
     test('disables button when loading', () => {
         // Set loading to true
         useAuth.mockReturnValueOnce({ login: mockLogin, loading: true });
-        render(<LoginForm />);
-        expect(screen.getByRole('button', { name: /logging in.../i })).toBeDisabled();
+        const { container } = render(<LoginForm />);
+        expect(container.querySelector('button[type="submit"]')).toBeDisabled();
     });
 
     test('calls handleSubmit on form submission', () => {
         render(<LoginForm />);
-        fireEvent.submit(screen.getByRole('button', { name: /login/i }));
+        fireEvent.submit(screen.getByRole('button', { name: /sign in|login/i }));
         expect(mockHandleSubmit).toHaveBeenCalled();
     });
 });

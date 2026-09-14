@@ -7,10 +7,10 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import { Chip, Stack } from '@mui/material';
 import SpeedIcon from '@mui/icons-material/Speed';
-import DeleteIcon from '@mui/icons-material/Delete';
+import ReplayIcon from '@mui/icons-material/Replay';
+import CloseIcon from '@mui/icons-material/Close';
 import { getMediaUrl } from '../../../utils/mediaUtils';
 import { useAuth } from '../../../contexts/AuthContext';
-import ConfirmDialog from '../../ConfirmDialog/ConfirmDialog';
 import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
 
 const style = {
@@ -37,19 +37,12 @@ export default function FaultModal({
     onDeleteFault,
 }) {
     const { user } = useAuth();
-    const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
     const [viewerIndex, setViewerIndex] = React.useState(null);
 
     if (!fault) return null;
 
     const canManage = user && (user.role === 'admin' || user.role === 'mechanic');
     const photos = fault.photos || [];
-
-    const handleConfirmDelete = () => {
-        setConfirmDeleteOpen(false);
-        onDeleteFault?.(fault);
-        handleClose();
-    };
 
     return (
         <>
@@ -152,34 +145,41 @@ export default function FaultModal({
                             </Box>
                         )}
 
+                        {fault.resolutionDescription && (
+                            <Box sx={{ mb: 2.5, p: 1.5, borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+                                <Typography variant="subtitle2" color="success.main" fontWeight={700} gutterBottom>
+                                    Resolution Notes & Work Performed:
+                                </Typography>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                    {fault.resolutionDescription}
+                                </Typography>
+                                {fault.resolvedBy && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                        Resolved by: {fault.resolvedBy?.name || fault.resolvedBy?.email || fault.resolvedBy}
+                                    </Typography>
+                                )}
+                            </Box>
+                        )}
+
                         <Typography variant="caption" color="text.secondary" display="block">
                             Reported: {fault.createdAt ? new Date(fault.createdAt).toLocaleString('en-GB') : 'N/A'}
                             {fault.closedAt && ` | Closed: ${new Date(fault.closedAt).toLocaleString('en-GB')}`}
                         </Typography>
 
-                        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            {canManage && onDeleteFault ? (
-                                <Button
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<DeleteIcon />}
-                                    onClick={() => setConfirmDeleteOpen(true)}
-                                >
-                                    Delete
-                                </Button>
-                            ) : <Box />}
-
+                        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                             <Box display="flex" gap={1.5}>
                                 {canManage && fault.status === 'closed' && onReopenFault && (
                                     <Button
-                                        variant="outlined"
-                                        color="secondary"
+                                        variant="contained"
+                                        color="warning"
+                                        startIcon={<ReplayIcon />}
                                         onClick={() => {
                                             onReopenFault(fault);
                                             handleClose();
                                         }}
+                                        sx={{ fontWeight: 700 }}
                                     >
-                                        Reopen
+                                        Reopen Fault
                                     </Button>
                                 )}
                                 {canManage && fault.status !== 'closed' && onCloseFault && (
@@ -198,6 +198,7 @@ export default function FaultModal({
                                 <Button
                                     variant="outlined"
                                     color="inherit"
+                                    startIcon={<CloseIcon />}
                                     onClick={handleClose}
                                     sx={{
                                         color: 'text.secondary',
@@ -217,18 +218,6 @@ export default function FaultModal({
                     </Box>
                 </Fade>
             </Modal>
-
-            {/* In-App Confirmation Dialog replacing window.confirm */}
-            <ConfirmDialog
-                open={confirmDeleteOpen}
-                title="Confirm Delete"
-                message="Are you sure you want to permanently delete this fault record?"
-                confirmText="Delete"
-                cancelText="Cancel"
-                confirmColor="error"
-                onConfirm={handleConfirmDelete}
-                onCancel={() => setConfirmDeleteOpen(false)}
-            />
 
             {/* In-App Image Viewer Dialog */}
             <ImageViewerDialog
