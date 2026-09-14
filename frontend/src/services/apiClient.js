@@ -9,12 +9,24 @@ const apiClient = axios.create({
     },
 });
 
-// Backward compatibility helper
+// Initialize token from localStorage if present
+try {
+    const storedToken = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    if (storedToken) {
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+    }
+} catch (e) {
+    // Ignore in non-browser environments
+}
+
+// Token helper: updates Authorization header and localStorage
 apiClient.setToken = (token) => {
     if (token) {
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        try { localStorage.setItem('token', token); } catch (e) {}
     } else {
         delete apiClient.defaults.headers.common['Authorization'];
+        try { localStorage.removeItem('token'); } catch (e) {}
     }
 };
 
@@ -31,6 +43,7 @@ apiClient.interceptors.response.use(
                 url.includes('/auth/me');
 
             if (!isAuthRoute && currentPath !== '/login') {
+                apiClient.setToken(null);
                 window.location.href = '/login';
             }
         }
