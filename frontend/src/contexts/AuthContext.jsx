@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // On mount, check if authenticated session exists via httpOnly cookie
+    // On mount, check if authenticated session exists via httpOnly cookie or stored token
     useEffect(() => {
         let isMounted = true;
         apiClient.get('/auth/me')
@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
             })
             .catch(() => {
                 if (isMounted) {
+                    apiClient.setToken(null);
                     setUser(null);
                     setUserId(null);
                 }
@@ -47,6 +48,9 @@ export const AuthProvider = ({ children }) => {
                 : maybePassword;
 
             const { data } = await apiClient.post('/auth/login', { email, password });
+            if (data.token) {
+                apiClient.setToken(data.token);
+            }
             setUser(data.user);
             setUserId(data.user.id || data.user._id);
             if (data.user?.mustChangePassword) {
@@ -76,6 +80,9 @@ export const AuthProvider = ({ children }) => {
                 email,
                 password,
             });
+            if (data.token) {
+                apiClient.setToken(data.token);
+            }
             setUser(data.user);
             setUserId(data.user.id || data.user._id);
             if (data.user?.mustChangePassword) {
@@ -102,6 +109,7 @@ export const AuthProvider = ({ children }) => {
         } catch (err) {
             console.error('Logout error:', err);
         } finally {
+            apiClient.setToken(null);
             setUser(null);
             setUserId(null);
             navigate('/login');
