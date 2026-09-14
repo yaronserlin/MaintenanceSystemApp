@@ -74,8 +74,8 @@ export default function EquipmentBooksTab({ equipment, tool, onRefresh }) {
                 notify.error('Only PDF files are supported');
                 return;
             }
-            if (file.size > 15 * 1024 * 1024) {
-                notify.error('File size exceeds 15MB limit');
+            if (file.size > 50 * 1024 * 1024) {
+                notify.error('File size exceeds 50MB limit');
                 return;
             }
             setSelectedFile(file);
@@ -228,7 +228,7 @@ export default function EquipmentBooksTab({ equipment, tool, onRefresh }) {
                 <Box component="form" onSubmit={handleUploadSubmit}>
                     <DialogContent dividers>
                         <Alert severity="info" sx={{ mb: 2 }}>
-                            Supports PDF documents up to 15MB (e.g. operator manual, wiring schematics, parts catalog).
+                            Supports PDF documents up to 50MB (e.g. operator manual, wiring schematics, parts catalog).
                         </Alert>
                         <TextField
                             label="Manual Title"
