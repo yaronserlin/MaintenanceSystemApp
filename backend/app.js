@@ -35,23 +35,33 @@ if (process.env.NODE_ENV !== 'test') {
 const isProd = process.env.NODE_ENV === 'production';
 const devOrigins = isProd ? [] : ['http://localhost:5173', 'http://localhost:4173'];
 
+// Parse allowed frontend origins from environment (supports comma-separated list and removes trailing slashes)
+const configuredOrigins = (process.env.FRONTEND_URL || '')
+    .split(',')
+    .map(url => url.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
+const allowedOrigins = configuredOrigins.length > 0 
+    ? configuredOrigins 
+    : ['http://localhost:5173'];
+
 // Security headers
 app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            'frame-ancestors': ["'self'", ...devOrigins, process.env.FRONTEND_URL].filter(Boolean),
+            'frame-ancestors': ["'self'", ...devOrigins, ...allowedOrigins],
         },
     },
 }));
 
-// CORS locked to configured frontend origin
-const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
+// CORS locked to configured frontend origins
 app.use(cors({
     origin: (origin, callback) => {
+        const normalizedOrigin = origin ? origin.replace(/\/+$/, '') : null;
         // Allow requests with no origin (like mobile apps, curl, postman) or matching origin
-        if (!origin || origin === allowedOrigin || devOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.includes(normalizedOrigin) || devOrigins.includes(origin)) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -118,15 +128,17 @@ app.get('/uploads/:filename', verifyToken, async (req, res, next) => {
     }
 });
 
-// Health check endpoint (Phase 5)
-app.get('/api/health', (req, res) => {
+// Health check endpoints (accessible at both /health and /api/health for cloud monitors like Render)
+const healthCheck = (req, res) => {
     const isDbConnected = mongoose.connection.readyState === 1;
     res.status(isDbConnected ? 200 : 503).json({
         status: isDbConnected ? 'healthy' : 'degraded',
         timestamp: new Date().toISOString(),
         database: isDbConnected ? 'connected' : 'disconnected',
     });
-});
+};
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
 
 // Routes
 app.use('/api/auth', authRoutes);
