@@ -1,0 +1,381 @@
+const request = require('supertest');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+
+const path = require('path');
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'test_secret_key_minimum_32_characters_long';
+process.env.MONGOMS_DOWNLOAD_DIR = path.join(__dirname, '../.mongo-binaries');
+
+const app = require('../app');
+
+jest.setTimeout(90000);
+
+let mongoServer;
+
+beforeAll(async () => {
+    mongoServer = await MongoMemoryServer.create();
+    const uri = mongoServer.getUri();
+    await mongoose.connect(uri);
+}, 90000);
+
+afterAll(async () => {
+    await mongoose.disconnect();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
+});
+
+describe('Multi-Tenant SaaS Isolation & Security Tests', () => {
+    let companyAToken;
+    let companyACookie;
+    let companyBToken;
+    let companyBCookie;
+
+    let toolAId;
+    let toolBId;
+    let faultAId;
+    let partAId;
+    let maintenanceAId;
+
+    let companyAOperatorToken;
+
+    // ── 1. Onboarding & Registration Isolation ──────────────────────
+    describe('Company Onboarding & Auth Security', () => {
+        it('registers Company A and creates first user as admin, ignoring client role', async () => {
+            const res = await request(app)
+                .post('/api/auth/register')
+                .send({
+                    companyName: 'Acme Corp',
+                    name: 'Alice Admin',
+                    email: 'alice@acme.com',
+                    password: 'password123',
+                    role: 'operator', // Attempt privilege override or tampering
+                });
+
+            expect(res.status).toBe(201);
+            expect(res.body.user.role).toBe('admin'); // Role forced to admin for creator
+            expect(res.body.user.company.name).toBe('Acme Corp');
+            expect(res.headers['set-cookie']).toBeDefined();
+
+            companyAToken = res.body.token;
+            companyACookie = res.headers['set-cookie'][0];
+        });
+
+        it('registers Company B independently with its own admin', async () => {
+            const res = await request(app)
+                .post('/api/auth/register')
+                .send({
+                    companyName: 'Beta Industries',
+                    name: 'Bob Admin',
+                    email: 'bob@beta.com',
+                    password: 'password123',
+                });
+
+            expect(res.status).toBe(201);
+            expect(res.body.user.company.name).toBe('Beta Industries');
+
+            companyBToken = res.body.token;
+            companyBCookie = res.headers['set-cookie'][0];
+        });
+
+        it('enforces global email uniqueness across companies', async () => {
+            const res = await request(app)
+                .post('/api/auth/register')
+                .send({
+                    companyName: 'Duplicate Corp',
+                    name: 'Fake Alice',
+                    email: 'alice@acme.com',
+                    password: 'password123',
+                });
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toMatch(/already exists/i);
+        });
+
+        it('authenticates and returns profile using cookie auth', async () => {
+            const res = await request(app)
+                .get('/api/auth/me')
+                .set('Cookie', companyACookie);
+
+            expect(res.status).toBe(200);
+            expect(res.body.email).toBe('alice@acme.com');
+            expect(res.body.company.name).toBe('Acme Corp');
+        });
+    });
+
+    // ── 2. Tool Tenant Isolation ────────────────────────────────────
+    describe('Tool Isolation', () => {
+        it('Company A creates Tool A', async () => {
+            const res = await request(app)
+                .post('/api/tools')
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({
+                    name: 'Acme Laser Cutter',
+                    serialNumber: 'ALC-001',
+                    localSerialNumber: '101',
+                    model: 'X-500',
+                    description: 'Acme primary cutting tool',
+                });
+
+            expect(res.status).toBe(201);
+            expect(res.body.name).toBe('Acme Laser Cutter');
+            toolAId = res.body._id;
+        });
+
+        it('Company B creates Tool B', async () => {
+            const res = await request(app)
+                .post('/api/tools')
+                .set('Authorization', `Bearer ${companyBToken}`)
+                .send({
+                    name: 'Beta Hydraulic Press',
+                    serialNumber: 'BHP-900',
+                    localSerialNumber: '202',
+                    model: 'Press-9',
+                });
+
+            expect(res.status).toBe(201);
+            expect(res.body.name).toBe('Beta Hydraulic Press');
+            toolBId = res.body._id;
+        });
+
+        it('Company A only lists its own tools', async () => {
+            const res = await request(app)
+                .get('/api/tools')
+                .set('Authorization', `Bearer ${companyAToken}`);
+
+            expect(res.status).toBe(200);
+            const toolNames = res.body.map(t => t.name);
+            expect(toolNames).toContain('Acme Laser Cutter');
+            expect(toolNames).not.toContain('Beta Hydraulic Press');
+        });
+
+        it('Company B cannot fetch Company A tool by ID (returns 404)', async () => {
+            const res = await request(app)
+                .get(`/api/tools/${toolAId}`)
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(404);
+        });
+
+        it('Company B cannot update Company A tool (returns 404)', async () => {
+            const res = await request(app)
+                .put(`/api/tools/${toolAId}`)
+                .set('Authorization', `Bearer ${companyBToken}`)
+                .send({ name: 'Hacked Tool' });
+
+            expect(res.status).toBe(404);
+        });
+
+        it('Company B cannot delete Company A tool (returns 404)', async () => {
+            const res = await request(app)
+                .delete(`/api/tools/${toolAId}`)
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(404);
+        });
+    });
+
+    // ── 3. Fault Tenant Isolation ───────────────────────────────────
+    describe('Fault Isolation', () => {
+        it('Company A creates a fault on Tool A', async () => {
+            const res = await request(app)
+                .post('/api/faults')
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({
+                    tool: toolAId,
+                    code: 'ERR-01',
+                    description: 'Laser alignment error',
+                });
+
+            expect(res.status).toBe(201);
+            expect(res.body.description).toBe('Laser alignment error');
+            faultAId = res.body._id;
+        });
+
+        it('Company B cannot log a fault referencing Company A tool', async () => {
+            const res = await request(app)
+                .post('/api/faults')
+                .set('Authorization', `Bearer ${companyBToken}`)
+                .send({
+                    tool: toolAId, // Belongs to Acme
+                    code: 'ERR-BOGUS',
+                    description: 'Cross-tenant fault creation attempt',
+                });
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toMatch(/does not exist in your organization/i);
+        });
+
+        it('Company B sees zero faults from Company A', async () => {
+            const res = await request(app)
+                .get('/api/faults')
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.length).toBe(0);
+        });
+
+        it('Company B cannot close Company A fault (returns 404)', async () => {
+            const res = await request(app)
+                .patch(`/api/faults/${faultAId}/close`)
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(404);
+        });
+
+        it('Company B cannot delete Company A fault (returns 404)', async () => {
+            const res = await request(app)
+                .delete(`/api/faults/${faultAId}`)
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(404);
+        });
+    });
+
+    // ── 4. Part & Maintenance Tenant Isolation ──────────────────────
+    describe('Part & Maintenance Isolation', () => {
+        it('Company A creates a Part for Tool A', async () => {
+            const res = await request(app)
+                .post('/api/parts')
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({
+                    name: 'Laser Lens',
+                    partNumber: 'LL-1',
+                    tool: toolAId,
+                    inStock: 4,
+                });
+
+            expect(res.status).toBe(201);
+            partAId = res.body._id;
+        });
+
+        it('Company B cannot see Company A parts', async () => {
+            const res = await request(app)
+                .get('/api/parts')
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.length).toBe(0);
+        });
+
+        it('Company B cannot link a part to Company A tool', async () => {
+            const res = await request(app)
+                .post('/api/parts')
+                .set('Authorization', `Bearer ${companyBToken}`)
+                .send({
+                    name: 'Illicit Part',
+                    tool: toolAId,
+                    inStock: 1,
+                });
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toMatch(/does not exist in your organization/i);
+        });
+
+        it('Company A logs maintenance on Tool A', async () => {
+            const res = await request(app)
+                .post('/api/maintenance')
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({
+                    tool: toolAId,
+                    details: 'Cleaned laser optics and recalibrated',
+                });
+
+            expect(res.status).toBe(201);
+            maintenanceAId = res.body._id;
+        });
+
+        it('Company B cannot see Company A maintenance logs', async () => {
+            const res = await request(app)
+                .get('/api/maintenance')
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.length).toBe(0);
+        });
+    });
+
+    // ── 5. User Management & Role Enforcement ───────────────────────
+    describe('User Management & Role Isolation', () => {
+        let companyAOperatorId;
+
+        it('Company A admin creates an operator user', async () => {
+            const res = await request(app)
+                .post('/api/admin/users')
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({
+                    name: 'Aaron Operator',
+                    email: 'aaron@acme.com',
+                    password: 'password123',
+                    role: 'operator',
+                });
+
+            expect(res.status).toBe(201);
+            expect(res.body.role).toBe('operator');
+            companyAOperatorId = res.body._id;
+
+            // Log in as operator to get token
+            const loginRes = await request(app)
+                .post('/api/auth/login')
+                .send({ email: 'aaron@acme.com', password: 'password123' });
+            companyAOperatorToken = loginRes.body.token;
+        });
+
+        it('Company B admin list only shows Company B users', async () => {
+            const res = await request(app)
+                .get('/api/admin/users')
+                .set('Authorization', `Bearer ${companyBToken}`);
+
+            expect(res.status).toBe(200);
+            const emails = res.body.map(u => u.email);
+            expect(emails).toContain('bob@beta.com');
+            expect(emails).not.toContain('alice@acme.com');
+            expect(emails).not.toContain('aaron@acme.com');
+        });
+
+        it('Company B cannot modify Company A user role (returns 404)', async () => {
+            const res = await request(app)
+                .patch(`/api/admin/users/${companyAOperatorId}/role`)
+                .set('Authorization', `Bearer ${companyBToken}`)
+                .send({ role: 'admin' });
+
+            expect(res.status).toBe(404);
+        });
+
+        it('Operator role cannot access admin routes (returns 403)', async () => {
+            const res = await request(app)
+                .get('/api/admin/users')
+                .set('Authorization', `Bearer ${companyAOperatorToken}`);
+
+            expect(res.status).toBe(403);
+        });
+
+        it('Operator role cannot mutate tools directly on /api/tools (returns 403 - Critical #2 Fix)', async () => {
+            const res = await request(app)
+                .post('/api/tools')
+                .set('Authorization', `Bearer ${companyAOperatorToken}`)
+                .send({ name: 'Unauthorized Tool' });
+
+            expect(res.status).toBe(403);
+        });
+
+        it('Operator role cannot close faults (returns 403 - Finding #5 Fix)', async () => {
+            const res = await request(app)
+                .patch(`/api/faults/${faultAId}/close`)
+                .set('Authorization', `Bearer ${companyAOperatorToken}`);
+
+            expect(res.status).toBe(403);
+        });
+    });
+
+    // ── 6. Health & System Check ────────────────────────────────────
+    describe('Health Check Endpoint', () => {
+        it('GET /api/health returns healthy', async () => {
+            const res = await request(app).get('/api/health');
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('healthy');
+            expect(res.body.database).toBe('connected');
+        });
+    });
+});

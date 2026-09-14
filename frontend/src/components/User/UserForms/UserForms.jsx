@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Button, MenuItem, Alert } from '@mui/material';
+import { Box, Button, Alert } from '@mui/material';
 
 import useForm from '../../../hooks/useForm';
 import Input from '../../From/Input';
@@ -9,6 +9,13 @@ import {
     validatePassword,
     validateRole,
 } from '../../../utils/validate';
+
+const CREATE_USER_INITIAL = Object.freeze({
+    name: '',
+    email: '',
+    password: '',
+    role: 'operator',
+});
 
 /**
  * @param {{ name: string; email: string; password?: string; role: string }} initialValues
@@ -42,12 +49,11 @@ function UserForm({ initialValues, onSubmit, submitLabel = 'Submit' }) {
         },
     });
 
-    // keep local form in sync if parent changes initialValues
+    // Sync only when initialValues actually changes identity (e.g. switching users to edit)
     useEffect(() => {
         setValues(initialValues);
     }, [initialValues, setValues]);
 
-    // clear server error on any field change
     const handleFieldChange = useCallback(
         (e) => {
             if (serverError) setServerError('');
@@ -92,7 +98,7 @@ function UserForm({ initialValues, onSubmit, submitLabel = 'Submit' }) {
                 onChange={handleFieldChange}
                 error={Boolean(errors.password)}
                 helperText={errors.password}
-                required
+                required={submitLabel.toLowerCase() === 'create'}
             />
 
             <Input.Select
@@ -107,12 +113,7 @@ function UserForm({ initialValues, onSubmit, submitLabel = 'Submit' }) {
                     { value: 'mechanic', label: 'Mechanic' },
                     { value: 'admin', label: 'Admin' },
                 ]}
-            // helperText={errors.role}
             />
-            {/* <MenuItem value="operator">Operator</MenuItem>
-                <MenuItem value="mechanic">Mechanic</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-            </Input.Select> */}
 
             <Button
                 type="submit"
@@ -135,9 +136,10 @@ function validateUser(vals) {
     const emailErr = validateEmail(vals.email);
     if (emailErr) errs.email = emailErr;
 
-
-    const pwdErr = validatePassword(vals.password);
-    if (pwdErr) errs.password = pwdErr;
+    if (vals.password) {
+        const pwdErr = validatePassword(vals.password);
+        if (pwdErr) errs.password = pwdErr;
+    }
 
     const roleErr = validateRole(vals.role);
     if (roleErr) errs.role = roleErr;
@@ -147,10 +149,9 @@ function validateUser(vals) {
 
 /** Blank form for creating a new user */
 export function CreateUserForm({ onSubmit }) {
-    const initial = { name: '', email: '', password: '', role: 'operator' };
     return (
         <UserForm
-            initialValues={initial}
+            initialValues={CREATE_USER_INITIAL}
             onSubmit={onSubmit}
             submitLabel="Create"
         />
@@ -169,135 +170,3 @@ export function UpdateUserForm({ initialValues, onSubmit }) {
 }
 
 export default UserForm;
-
-// // components/UserForm.jsx
-// import React, { useEffect } from 'react';
-// import { Box, TextField, Button, Typography, Select, MenuItem } from '@mui/material';
-// import useForm from '../../../hooks/useForm';
-
-
-// function UserForm({
-//     initialValues,
-//     onSubmit,
-//     submitLabel = 'Submit',
-//     validate,
-// }) {
-//     const {
-//         values,
-//         errors,
-//         isSubmitting,
-//         handleChange,
-//         handleSubmit,
-//         resetForm,
-//         setValues,
-//     } = useForm({
-//         initialValues,
-//         validate,
-//         onSubmit: (vals) => {
-//             onSubmit(vals);
-//             // if it’s a “create” scenario, clear the form after
-//             if (submitLabel.toLowerCase() === 'create') {
-//                 resetForm();
-//             }
-//         },
-//     });
-
-//     // Sync in updates if initialValues ever change
-//     useEffect(() => {
-//         setValues(initialValues);
-//     }, [initialValues, setValues]);
-
-//     return (
-//         <Box component="form" onSubmit={handleSubmit} p={2} maxWidth={600}>
-//             <UserFormFields values={values} onChange={handleChange} />
-
-//             {/* Example of per-field error display */}
-//             {Object.entries(errors).map(([field, msg]) => (
-//                 <Typography key={field} color="error" variant="caption">
-//                     {msg}
-//                 </Typography>
-//             ))}
-
-//             <Box mt={3}>
-//                 <Button type="submit" variant="contained" disabled={isSubmitting}>
-//                     {submitLabel}
-//                 </Button>
-//             </Box>
-//         </Box>
-//     );
-// }
-
-// // components/CreateUserForm.jsx
-// // import React from 'react';
-// // import UserForm from './UserForm';
-
-// const CREATE_INITIAL = {
-//     name: '',
-//     email: '',
-//     password: '',
-//     role: 'operator',
-// };
-
-// const validateUser = (vals) => {
-//     const errs = {};
-//     if (!vals.name.trim()) errs.name = 'Name is required';
-//     if (vals.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vals.email))
-//         errs.email = 'Invalid email';
-//     // add more rules here if needed…
-//     return errs;
-// };
-
-// export function CreateUserForm({ onSubmit }) {
-//     return (
-//         <UserForm
-//             initialValues={CREATE_INITIAL}
-//             onSubmit={onSubmit}
-//             submitLabel="Create"
-//             validate={validateUser}
-//         />
-//     );
-// }
-
-
-
-// // Generic form fields component (used by both create and update forms)
-// function UserFormFields({ values, onChange }) {
-//     return (
-//         <Box display="flex" flexDirection="column" gap={2}>
-//             <TextField
-//                 label="Name"
-//                 name="name"
-//                 required
-//                 value={values.name}
-//                 onChange={onChange}
-//             />
-//             <TextField
-//                 label="Email"
-//                 name="email"
-//                 value={values.email}
-//                 onChange={onChange}
-//             />
-//             <TextField
-//                 label="Password"
-//                 name="password"
-//                 type='password'
-//                 value={values.password}
-//                 onChange={onChange}
-//             />
-//             <Select
-//                 labelId="role"
-//                 name='role'
-//                 id="role"
-//                 value={values.role}
-//                 label="role"
-//                 onChange={onChange}
-//             >
-//                 <MenuItem value={'admin'}>Admin</MenuItem>
-//                 <MenuItem value={'operator'}>Operator</MenuItem>
-//                 <MenuItem value={'mechanic'}>Mechanic</MenuItem>
-//             </Select>
-
-
-//         </Box>
-//     );
-// }

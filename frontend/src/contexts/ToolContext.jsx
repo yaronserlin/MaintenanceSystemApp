@@ -1,118 +1,89 @@
-/**
- * ToolContext provides CRUD operations and state management for tools within the application.
- * @module ToolContext
- */
-
+// src/contexts/ToolContext.jsx
 import React, {
     createContext,
     useContext,
     useState,
     useEffect,
     useCallback,
-    useMemo
+    useMemo,
 } from 'react';
 import toolsService from '../services/toolsService';
 import { useNotify } from './NotificationContext';
+import { useAuth } from './AuthContext';
 import { retry, sortToolsByLocalSerial } from '../utils';
 
-// Create the context to hold tool state and operations
 const ToolContext = createContext();
 
-/**
- * Provider component that supplies tool data and operations to its children.
- *
- * @param {object} props - React props
- * @param {React.ReactNode} props.children - Child components that consume the context
- */
 export function ToolProvider({ children }) {
     const notify = useNotify();
+    const { user } = useAuth();
     const [tools, setTools] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    /**
-     * Fetch all tools from the API and update state.
-     * Retries on failure according to retry utility policy.
-     *
-     * @async
-     * @function fetchTools
-     * @returns {Promise<void>}
-     */
     const fetchTools = useCallback(async () => {
+        if (!user) return;
         setLoading(true);
         setError(null);
         try {
             const data = await retry(() => toolsService.getAll());
-            setTools(data);
+            setTools(Array.isArray(data) ? data : (data.tools || []));
         } catch (err) {
             setError(err);
             notify.error('Failed to load tools');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user, notify]);
 
-    /**
-     * Create a new tool via the API and add it to state.
-     *
-     * @async
-     * @function createTool
-     * @param {object} toolData - Data for the new tool
-     * @returns {Promise<void>}
-     */
     const createTool = useCallback(async (toolData) => {
         try {
             const newTool = await retry(() => toolsService.create(toolData));
-            setTools(prev => [...prev, newTool]);
+            setTools(prev => [newTool, ...prev]);
+            notify.success('Tool created successfully');
+            return newTool;
         } catch (err) {
             setError(err);
             notify.error('Failed to create tool');
+            throw err;
         }
     }, [notify]);
 
-    /**
-     * Update an existing tool via the API and update state.
-     *
-     * @async
-     * @function updateTool
-     * @param {string} id - ID of the tool to update
-     * @param {object} updates - Partial updates for the tool
-     * @returns {Promise<void>}
-     */
     const updateTool = useCallback(async (id, updates) => {
         try {
             const updated = await retry(() => toolsService.update(id, updates));
             setTools(prev => prev.map(t => (t._id === id ? updated : t)));
+            notify.success('Tool updated successfully');
+            return updated;
         } catch (err) {
             setError(err);
             notify.error('Failed to update tool');
+            throw err;
         }
     }, [notify]);
 
-    /**
-     * Delete a tool via the API and remove it from state.
-     *
-     * @async
-     * @function deleteTool
-     * @param {string} id - ID of the tool to delete
-     * @returns {Promise<void>}
-     */
     const deleteTool = useCallback(async (id) => {
         try {
             await retry(() => toolsService.delete(id));
             setTools(prev => prev.filter(t => t._id !== id));
+            notify.success('Tool deleted');
         } catch (err) {
             setError(err);
             notify.error('Failed to delete tool');
+            throw err;
         }
     }, [notify]);
 
-    // On mount, automatically fetch tools
     useEffect(() => {
-        fetchTools();
-    }, [fetchTools]);
+        if (user) {
+            fetchTools();
+        } else {
+            setTools([]);
+            setError(null);
+            setLoading(false);
+        }
+    }, [user, fetchTools]);
 
-    // Memoize the context value to prevent unnecessary re-renders
     const value = useMemo(() => ({
         tools,
         loading,
@@ -120,7 +91,7 @@ export function ToolProvider({ children }) {
         fetchTools,
         createTool,
         updateTool,
-        deleteTool
+        deleteTool,
     }), [tools, loading, error, fetchTools, createTool, updateTool, deleteTool]);
 
     return (
@@ -130,22 +101,16 @@ export function ToolProvider({ children }) {
     );
 }
 
-/**
- * Custom hook to consume ToolContext.
- * Ensures that tools are sorted by their local serial before returning.
- *
- * @function useTool
- * @returns {object} - Context value with sorted tools and CRUD operations
- */
 export function useTool() {
     const context = useContext(ToolContext);
     if (!context) {
         throw new Error('useTool must be used within a ToolProvider');
     }
 
-    // Destructure tools and apply sorting utility
     const { tools, ...rest } = context;
-    const sortedTools = sortToolsByLocalSerial(tools);
+    const sortedTools = useMemo(() => sortToolsByLocalSerial(tools || []), [tools]);
 
     return { tools: sortedTools, ...rest };
 }
+
+export default ToolContext;

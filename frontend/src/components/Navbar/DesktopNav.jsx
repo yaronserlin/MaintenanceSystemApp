@@ -4,11 +4,9 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 
 export default function DesktopNav({ display, user, pages }) {
-    const navigate = useNavigate();
-
     if (!user) return null;
 
     return (
@@ -17,8 +15,8 @@ export default function DesktopNav({ display, user, pages }) {
             <Typography
                 variant="h6"
                 noWrap
-                component="div"
-                onClick={() => navigate('/')}
+                component={RouterLink}
+                to="/"
                 sx={{
                     mr: 2,
                     display,
@@ -28,6 +26,7 @@ export default function DesktopNav({ display, user, pages }) {
                     color: 'inherit',
                     textDecoration: 'none',
                     cursor: 'pointer',
+                    '&:focus-visible': { outline: '2px solid white' },
                 }}
             >
                 MAINTENANCE APP
@@ -36,7 +35,8 @@ export default function DesktopNav({ display, user, pages }) {
                 {pages.map(page => (
                     <Button
                         key={page}
-                        onClick={() => navigate(`/${page.toLowerCase()}`)}
+                        component={RouterLink}
+                        to={`/${page.toLowerCase()}`}
                         sx={{ my: 2, color: 'white', display: 'block' }}
                     >
                         {page}
