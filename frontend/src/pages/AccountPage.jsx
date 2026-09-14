@@ -11,6 +11,7 @@ import {
     IconButton,
     CircularProgress,
     Divider,
+    Paper,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { styled } from '@mui/material/styles';
@@ -120,12 +121,22 @@ export default function AccountPage() {
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
             {/* Profile Avatar Card */}
-            <Box display="flex" alignItems="center" gap={3} sx={{ mb: 4, p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid #e0e0e0' }}>
+            <Paper
+                variant="outlined"
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    mb: 4,
+                    p: 3,
+                    borderRadius: 2,
+                }}
+            >
                 <Box position="relative">
                     <Avatar
                         src={getMediaUrl(user?.avatar)}
                         alt={user?.name}
-                        sx={{ width: 84, height: 84, fontSize: '2rem' }}
+                        sx={{ width: 84, height: 84, fontSize: '2rem', bgcolor: 'primary.main', color: 'primary.contrastText' }}
                     >
                         {user?.name?.charAt(0)}
                     </Avatar>
@@ -142,10 +153,10 @@ export default function AccountPage() {
                     )}
                 </Box>
                 <Box>
-                    <Typography variant="subtitle1" fontWeight="bold">
+                    <Typography variant="subtitle1" fontWeight={700}>
                         Profile Picture
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                         JPG, PNG, GIF up to 5MB
                     </Typography>
                     <Button
@@ -163,72 +174,84 @@ export default function AccountPage() {
                         />
                     </Button>
                 </Box>
-            </Box>
+            </Paper>
 
-            <Box component="form" onSubmit={handleUpdateProfile} sx={{ mb: 4 }}>
-                <Typography variant="h6" gutterBottom>Personal Information</Typography>
-                <TextField
-                    fullWidth
-                    label="Name"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    sx={{ mb: 2 }}
-                    required
-                />
-                <TextField
-                    fullWidth
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    sx={{ mb: 2 }}
-                    required
-                />
-                <Button type="submit" variant="contained" disabled={loading}>
-                    Save
-                </Button>
-            </Box>
+            <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+                <Box component="form" onSubmit={handleUpdateProfile}>
+                    <Typography variant="h6" fontWeight={700} gutterBottom>
+                        Personal Information
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Update your public profile display name and notification email.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        label="Full Name"
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
+                        sx={{ mb: 2 }}
+                        required
+                    />
+                    <TextField
+                        fullWidth
+                        label="Email Address"
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        sx={{ mb: 2.5 }}
+                        required
+                    />
+                    <Button type="submit" variant="contained" disabled={loading}>
+                        Save Changes
+                    </Button>
+                </Box>
+            </Paper>
 
-            <Divider sx={{ my: 4 }} />
-
-            <Box component="form" onSubmit={handleChangePassword}>
-                <Typography variant="h6" gutterBottom>Change Password</Typography>
-                <TextField
-                    fullWidth
-                    label="Current Password"
-                    name="currentPassword"
-                    type="password"
-                    value={pwd.currentPassword}
-                    onChange={handlePwdChange}
-                    sx={{ mb: 2 }}
-                    required
-                />
-                <TextField
-                    fullWidth
-                    label="New Password"
-                    name="newPassword"
-                    type="password"
-                    value={pwd.newPassword}
-                    onChange={handlePwdChange}
-                    sx={{ mb: 2 }}
-                    required
-                />
-                <TextField
-                    fullWidth
-                    label="Confirm New Password"
-                    name="confirm"
-                    type="password"
-                    value={pwd.confirm}
-                    onChange={handlePwdChange}
-                    sx={{ mb: 2 }}
-                    required
-                />
-                <Button type="submit" variant="contained" disabled={loading}>
-                    Update
-                </Button>
-            </Box>
+            <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+                <Box component="form" onSubmit={handleChangePassword}>
+                    <Typography variant="h6" fontWeight={700} gutterBottom>
+                        Security & Password
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Ensure your account is using a secure, strong password.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        label="Current Password"
+                        name="currentPassword"
+                        type="password"
+                        value={pwd.currentPassword}
+                        onChange={handlePwdChange}
+                        sx={{ mb: 2 }}
+                        required
+                    />
+                    <TextField
+                        fullWidth
+                        label="New Password"
+                        name="newPassword"
+                        type="password"
+                        value={pwd.newPassword}
+                        onChange={handlePwdChange}
+                        sx={{ mb: 2 }}
+                        required
+                    />
+                    <TextField
+                        fullWidth
+                        label="Confirm New Password"
+                        name="confirm"
+                        type="password"
+                        value={pwd.confirm}
+                        onChange={handlePwdChange}
+                        sx={{ mb: 2.5 }}
+                        required
+                    />
+                    <Button type="submit" variant="contained" disabled={loading}>
+                        Update Password
+                    </Button>
+                </Box>
+            </Paper>
         </Container>
     );
 }

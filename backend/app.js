@@ -2,12 +2,18 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const { verifyToken } = require('./middleware/authMiddleware');
+
+// Model imports for tenant-aware media access
+const Equipment = require('./models/Equipment');
+const Fault = require('./models/Fault');
+const User = require('./models/User');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -66,8 +72,48 @@ app.use((req, res, next) => {
     next();
 });
 
-// Uploads - served statically so <img> and PDF viewers can load media without CORS issues
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Uploads - Protected multi-tenant media delivery
+const uploadsDir = path.join(__dirname, 'uploads');
+app.get('/uploads/:filename', verifyToken, async (req, res, next) => {
+    try {
+        const rawFilename = req.params.filename;
+        const filename = path.basename(rawFilename);
+        const filePath = path.join(uploadsDir, filename);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: 'Media file not found' });
+        }
+
+        const safePattern = new RegExp(filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+        // Check if resource belongs to the requesting user's company
+        const [ownsEquipmentBook, ownsFaultPhoto, ownsUserAvatar] = await Promise.all([
+            Equipment.exists({ companyId: req.user.companyId, 'books.fileUrl': safePattern }),
+            Fault.exists({ companyId: req.user.companyId, photos: safePattern }),
+            User.exists({ companyId: req.user.companyId, avatar: safePattern }),
+        ]);
+
+        if (ownsEquipmentBook || ownsFaultPhoto || ownsUserAvatar) {
+            return res.sendFile(filePath);
+        }
+
+        // Check if resource belongs to another company
+        const [otherEquipmentBook, otherFaultPhoto, otherUserAvatar] = await Promise.all([
+            Equipment.exists({ companyId: { $ne: req.user.companyId }, 'books.fileUrl': safePattern }),
+            Fault.exists({ companyId: { $ne: req.user.companyId }, photos: safePattern }),
+            User.exists({ companyId: { $ne: req.user.companyId }, avatar: safePattern }),
+        ]);
+
+        if (otherEquipmentBook || otherFaultPhoto || otherUserAvatar) {
+            return res.status(403).json({ message: 'Forbidden: Cannot access media belonging to another organization' });
+        }
+
+        // Fallback for unassigned or general media
+        res.sendFile(filePath);
+    } catch (err) {
+        next(err);
+    }
+});
 
 // Health check endpoint (Phase 5)
 app.get('/api/health', (req, res) => {

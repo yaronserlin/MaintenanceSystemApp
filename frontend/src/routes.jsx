@@ -1,40 +1,48 @@
-// src/routes.jsx
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Container } from '@mui/material';
+import { Box } from '@mui/material';
 
 import { NotificationProvider } from './contexts/NotificationContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToolProvider } from './contexts/ToolContext';
 import { FaultProvider } from './contexts/FaultContext';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import RequireAdmin from './components/RequireAdmin';
 import Navbar from './components/Navbar';
+import LoadingComponent from './components/LoadingComponent/LoadingComponent';
 
-import Dashboard from './pages/Dashboard';
-import ToolPage from './pages/ToolPage';
-import Login from './pages/Login';
-import NotFound from './pages/NotFound';
-import Logout from './pages/Logout';
-import ToolsPage from './pages/ToolsPage';
-import EquipmentSchedulePage from './pages/EquipmentSchedulePage';
-import ProfilePage from './pages/ProfilePage';
-import AccountPage from './pages/AccountPage';
-import AdminDashboard from './pages/AdminDashboard';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ToolPage = lazy(() => import('./pages/ToolPage'));
+const Login = lazy(() => import('./pages/Login'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const Logout = lazy(() => import('./pages/Logout'));
+const ToolsPage = lazy(() => import('./pages/ToolsPage'));
+const EquipmentSchedulePage = lazy(() => import('./pages/EquipmentSchedulePage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+
+function RequireStaff({ children }) {
+    const { user } = useAuth();
+    if (user?.role === 'operator') {
+        return <Navigate to="/dashboard" replace />;
+    }
+    return children;
+}
 
 export default function AppRoutes() {
     const pages = ['Dashboard', 'Equipment'];
-    const settings = ['Profile', 'Account', 'Logout'];
 
     return (
         <NotificationProvider>
             <AuthProvider>
                 <ToolProvider>
                     <FaultProvider>
-                        <Navbar pages={pages} settings={settings} />
-                        <Container sx={{ mt: 4, mb: 4 }}>
-                            <Routes>
+                        <Navbar pages={pages} />
+                        <Box component="main" sx={{ flexGrow: 1, minHeight: 'calc(100vh - 64px)' }}>
+                            <Suspense fallback={<LoadingComponent />}>
+                                <Routes>
                                 {/* Default redirect */}
                                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -54,7 +62,9 @@ export default function AppRoutes() {
                                     path="/equipment"
                                     element={
                                         <ProtectedRoute>
-                                            <ToolsPage />
+                                            <RequireStaff>
+                                                <ToolsPage />
+                                            </RequireStaff>
                                         </ProtectedRoute>
                                     }
                                 />
@@ -62,7 +72,9 @@ export default function AppRoutes() {
                                     path="/equipment/:id"
                                     element={
                                         <ProtectedRoute>
-                                            <ToolPage />
+                                            <RequireStaff>
+                                                <ToolPage />
+                                            </RequireStaff>
                                         </ProtectedRoute>
                                     }
                                 />
@@ -70,7 +82,9 @@ export default function AppRoutes() {
                                     path="/equipment/:id/schedules/:scheduleId"
                                     element={
                                         <ProtectedRoute>
-                                            <EquipmentSchedulePage />
+                                            <RequireStaff>
+                                                <EquipmentSchedulePage />
+                                            </RequireStaff>
                                         </ProtectedRoute>
                                     }
                                 />
@@ -83,7 +97,9 @@ export default function AppRoutes() {
                                     path="/tools/:id"
                                     element={
                                         <ProtectedRoute>
-                                            <ToolPage />
+                                            <RequireStaff>
+                                                <ToolPage />
+                                            </RequireStaff>
                                         </ProtectedRoute>
                                     }
                                 />
@@ -91,7 +107,9 @@ export default function AppRoutes() {
                                     path="/tools/:id/schedules/:scheduleId"
                                     element={
                                         <ProtectedRoute>
-                                            <EquipmentSchedulePage />
+                                            <RequireStaff>
+                                                <EquipmentSchedulePage />
+                                            </RequireStaff>
                                         </ProtectedRoute>
                                     }
                                 />
@@ -133,7 +151,8 @@ export default function AppRoutes() {
                                 {/* Fallback */}
                                 <Route path="*" element={<NotFound />} />
                             </Routes>
-                        </Container>
+                        </Suspense>
+                    </Box>
                     </FaultProvider>
                 </ToolProvider>
             </AuthProvider>

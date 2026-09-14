@@ -33,17 +33,17 @@ router.delete('/:id', validateObjectId('id'), ensureAdmin, deleteTool);
 
 // Equipment Books (PDFs)
 router.post('/:id/books', validateObjectId('id'), ensureAdmin, upload.single('book'), addBook);
-router.delete('/:id/books/:bookId', validateObjectId('id'), ensureAdmin, deleteBook);
+router.delete('/:id/books/:bookId', validateObjectId('id', 'bookId'), ensureAdmin, deleteBook);
 
 // Equipment Maintenance Schedules
 router.post('/:id/schedules', validateObjectId('id'), ensureAdmin, addSchedule);
-router.get('/:id/schedules/:scheduleId', validateObjectId('id'), getSchedule);
-router.delete('/:id/schedules/:scheduleId', validateObjectId('id'), ensureAdmin, deleteSchedule);
-router.post('/:id/schedules/:scheduleId/complete', validateObjectId('id'), ensureMechanicOrAdmin, completeSchedule);
+router.get('/:id/schedules/:scheduleId', validateObjectId('id', 'scheduleId'), getSchedule);
+router.delete('/:id/schedules/:scheduleId', validateObjectId('id', 'scheduleId'), ensureAdmin, deleteSchedule);
+router.post('/:id/schedules/:scheduleId/complete', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, completeSchedule);
 
 // Schedule Checklist (Todo List) items
-router.post('/:id/schedules/:scheduleId/checklist', validateObjectId('id'), ensureMechanicOrAdmin, addChecklistItem);
-router.patch('/:id/schedules/:scheduleId/checklist/:itemId', validateObjectId('id'), ensureMechanicOrAdmin, toggleChecklistItem);
-router.delete('/:id/schedules/:scheduleId/checklist/:itemId', validateObjectId('id'), ensureMechanicOrAdmin, deleteChecklistItem);
+router.post('/:id/schedules/:scheduleId/checklist', validateObjectId('id', 'scheduleId'), ensureMechanicOrAdmin, addChecklistItem);
+router.patch('/:id/schedules/:scheduleId/checklist/:itemId', validateObjectId('id', 'scheduleId', 'itemId'), ensureMechanicOrAdmin, toggleChecklistItem);
+router.delete('/:id/schedules/:scheduleId/checklist/:itemId', validateObjectId('id', 'scheduleId', 'itemId'), ensureMechanicOrAdmin, deleteChecklistItem);
 
 module.exports = router;

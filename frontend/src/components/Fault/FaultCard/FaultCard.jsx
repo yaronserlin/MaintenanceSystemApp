@@ -11,6 +11,8 @@ import {
     Chip,
 } from '@mui/material';
 import SpeedIcon from '@mui/icons-material/Speed';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../../contexts/AuthContext';
 import { getMediaUrl } from '../../../utils/mediaUtils';
 import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
@@ -23,8 +25,24 @@ export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault,
         ? fault.closingEngineHours
         : fault.engineHours;
 
+    const equipmentName = fault.tool?.name || (typeof fault.tool === 'string' ? '' : '');
+
     return (
-        <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+        <Card
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                position: 'relative',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: (theme) => theme.palette.mode === 'dark'
+                        ? '0 6px 16px rgba(0,0,0,0.5)'
+                        : '0 6px 16px rgba(0,0,0,0.08)',
+                },
+            }}
+        >
             {hasPhoto && (
                 <CardMedia
                     component="img"
@@ -35,7 +53,7 @@ export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault,
                         objectFit: 'cover',
                         cursor: 'pointer',
                         transition: 'opacity 0.2s',
-                        '&:hover': { opacity: 0.9 },
+                        '&:hover': { opacity: 0.88 },
                     }}
                     onClick={(e) => {
                         e.stopPropagation();
@@ -45,37 +63,50 @@ export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault,
                 />
             )}
             <CardActionArea onClick={() => onClick(fault)} sx={{ flexGrow: 1 }}>
-                <CardContent>
+                <CardContent sx={{ pb: 1 }}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                        <Typography variant="h6">{fault.code || 'Fault'}</Typography>
+                        <Typography variant="h6" fontWeight="bold">
+                            {fault.code || 'Fault'}
+                        </Typography>
                         <Chip
-                            label={fault.status.toUpperCase()}
+                            icon={fault.status === 'closed' ? <CheckCircleIcon /> : <WarningAmberIcon />}
+                            label={fault.status === 'closed' ? 'Closed' : 'Open'}
                             size="small"
                             color={fault.status === 'closed' ? 'success' : 'error'}
+                            sx={{ fontWeight: 600 }}
                         />
                     </Box>
 
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: 40 }}>
+                    {equipmentName && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            Equipment: {equipmentName}
+                        </Typography>
+                    )}
+
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: 38, lineHeight: 1.4 }}>
                         {fault.description}
                     </Typography>
 
-                    {hours !== undefined && (
-                        <Chip
-                            icon={<SpeedIcon />}
-                            label={`${hours} hrs`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ mb: 1 }}
-                        />
-                    )}
+                    <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+                        {hours !== undefined && (
+                            <Chip
+                                icon={<SpeedIcon sx={{ fontSize: '1rem !important' }} />}
+                                label={`${hours} hrs`}
+                                size="small"
+                                variant="outlined"
+                                sx={{ height: 22, fontSize: '0.75rem' }}
+                            />
+                        )}
 
-                    <Typography variant="caption" display="block" color="text.secondary">
-                        Reported: {new Date(fault.createdAt).toLocaleDateString('en-GB')}
-                    </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Reported: {new Date(fault.createdAt).toLocaleDateString('en-GB')}
+                        </Typography>
+                    </Box>
                 </CardContent>
             </CardActionArea>
+
             {user && (user.role === 'admin' || user.role === 'mechanic') && (
-                <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 1.5 }}>
+                <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 1.5, pt: 0.5 }}>
                     <div>
                         {fault.status === 'closed' ? (
                             <Button

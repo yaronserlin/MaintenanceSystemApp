@@ -230,3 +230,48 @@ exports.deleteFault = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.updateFault = async (req, res, next) => {
+    try {
+        if (!req.body || typeof req.body !== 'object') {
+            return res.status(400).json({ message: 'No data provided' });
+        }
+
+        const updates = {};
+        if (req.body.description && typeof req.body.description === 'string' && req.body.description.trim()) {
+            updates.description = req.body.description.trim();
+        }
+        if (req.body.code !== undefined) {
+            updates.code = typeof req.body.code === 'string' ? req.body.code.trim() : req.body.code;
+        }
+        if (req.body.engineHours !== undefined && req.body.engineHours !== '') {
+            const parsed = parseFloat(req.body.engineHours);
+            if (!isNaN(parsed) && parsed >= 0) {
+                updates.engineHours = parsed;
+            }
+        }
+        if (req.body.status && ['open', 'closed'].includes(req.body.status)) {
+            updates.status = req.body.status;
+            if (updates.status === 'closed') {
+                updates.closedAt = new Date();
+            } else {
+                updates.$unset = { closedAt: 1, closingEngineHours: 1 };
+            }
+        }
+
+        const fault = await Fault.findOneAndUpdate(
+            { _id: req.params.id, companyId: req.user.companyId },
+            updates,
+            { new: true, runValidators: true }
+        ).populate('tool', 'name serialNumber model currentEngineHours')
+         .populate('operator', 'name email role');
+
+        if (!fault) {
+            return res.status(404).json({ message: 'Fault not found' });
+        }
+
+        res.json(fault);
+    } catch (err) {
+        next(err);
+    }
+};
