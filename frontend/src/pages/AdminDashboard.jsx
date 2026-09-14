@@ -1,11 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Container, Typography, Grid } from '@mui/material';
+import { Container, Typography, Grid, Box, Chip } from '@mui/material';
+import PeopleIcon from '@mui/icons-material/People';
+import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 import adminService from '../services/adminService';
 import UserPanel from '../components/User/UserPanel/UserPanel';
 import ToolsPanel from '../components/Tool/ToolsPanel/ToolsPanel';
 import { useTool } from '../contexts/ToolContext';
 import { useNotify } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Page-level component that fetches both users and tools,
@@ -13,6 +17,7 @@ import { useNotify } from '../contexts/NotificationContext';
  */
 export default function AdminDashboard() {
     const notify = useNotify();
+    const { user: currentUser, setUser } = useAuth();
 
     // tools from context
     const {
@@ -100,22 +105,65 @@ export default function AdminDashboard() {
             try {
                 const updated = await adminService.updateUserRole(id, role);
                 setUsers((prev) => prev.map((u) => (u._id === id ? updated : u)));
+                if (currentUser && String(currentUser.id || currentUser._id) === String(id)) {
+                    setUser(prev => ({ ...prev, role: updated.role }));
+                }
                 notify.success(`User role updated to ${role} successfully`);
             } catch (err) {
                 console.error('Role update error:', err);
-                notify.error('Failed to update user role');
+                notify.error(err.response?.data?.message || 'Failed to update user role');
+                throw err;
             }
         },
-        [notify]
+        [notify, currentUser, setUser]
     );
 
     return (
-        <Container sx={{ mt: 4 }}>
-            <Typography variant="h4" gutterBottom>
-                Admin Dashboard
-            </Typography>
+        <Container sx={{ mt: 3, mb: 6 }}>
+            {/* Header with Title & Stat overview */}
+            <Box mb={4}>
+                <Box display="flex" alignItems="center" gap={1.5} mb={1}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 40,
+                            height: 40,
+                            borderRadius: 2,
+                            bgcolor: 'primary.main',
+                            color: 'primary.contrastText',
+                        }}
+                    >
+                        <AdminPanelSettingsIcon fontSize="small" />
+                    </Box>
+                    <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">
+                        System Administration
+                    </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 0, sm: 6.5 } }}>
+                    Manage user access privileges, company staff accounts, and equipment records
+                </Typography>
 
-            <Grid container spacing={4}>
+                <Box display="flex" gap={1.5} flexWrap="wrap" sx={{ mt: 2, ml: { xs: 0, sm: 6.5 } }}>
+                    <Chip
+                        icon={<PeopleIcon sx={{ fontSize: '1rem !important' }} />}
+                        label={`${users.length} Active User${users.length !== 1 ? 's' : ''}`}
+                        color="primary"
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                    />
+                    <Chip
+                        icon={<PrecisionManufacturingIcon sx={{ fontSize: '1rem !important' }} />}
+                        label={`${tools.length} Equipment Registered`}
+                        color="secondary"
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                    />
+                </Box>
+            </Box>
+
+            <Grid container spacing={3}>
                 <UserPanel
                     users={users}
                     loading={loadingUsers}

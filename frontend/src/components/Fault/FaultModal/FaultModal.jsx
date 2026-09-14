@@ -190,12 +190,27 @@ export default function FaultModal({
                                             onCloseFault(fault);
                                             handleClose();
                                         }}
+                                        sx={{ fontWeight: 700 }}
                                     >
-                                        Close
+                                        Resolve Fault
                                     </Button>
                                 )}
-                                <Button variant="outlined" onClick={handleClose}>
-                                    Close
+                                <Button
+                                    variant="outlined"
+                                    color="inherit"
+                                    onClick={handleClose}
+                                    sx={{
+                                        color: 'text.secondary',
+                                        borderColor: 'divider',
+                                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                        fontWeight: 600,
+                                        '&:hover': {
+                                            borderColor: 'text.primary',
+                                            color: 'text.primary',
+                                        },
+                                    }}
+                                >
+                                    Dismiss
                                 </Button>
                             </Box>
                         </Box>

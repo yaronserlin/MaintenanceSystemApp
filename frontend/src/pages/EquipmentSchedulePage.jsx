@@ -23,6 +23,8 @@ import {
     Divider,
     Paper,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SpeedIcon from '@mui/icons-material/Speed';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -37,6 +39,7 @@ export default function EquipmentSchedulePage() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const notify = useNotify();
+    const theme = useTheme();
 
     const [equipment, setEquipment] = useState(null);
     const [schedule, setSchedule] = useState(null);
@@ -153,7 +156,7 @@ export default function EquipmentSchedulePage() {
                             <Chip
                                 label={(schedule.status || 'NORMAL').toUpperCase()}
                                 color={schedule.status === 'overdue' ? 'error' : (schedule.status === 'due_soon' ? 'warning' : 'success')}
-                                sx={{ fontWeight: 'bold' }}
+                                sx={{ fontWeight: 700 }}
                             />
                         </Box>
                     </Box>
@@ -203,8 +206,10 @@ export default function EquipmentSchedulePage() {
                         <Button
                             variant="contained"
                             color="success"
+                            size="medium"
                             startIcon={<CheckCircleOutlineIcon />}
                             onClick={handleOpenCompleteDialog}
+                            sx={{ minHeight: 44 }}
                         >
                             Complete
                         </Button>
@@ -212,17 +217,25 @@ export default function EquipmentSchedulePage() {
                 </Box>
 
                 {checklist.length > 0 && (
-                    <LinearProgress
-                        variant="determinate"
-                        value={progressPercent}
-                        sx={{ height: 8, borderRadius: 4, mb: 3 }}
-                    />
+                    <Box display="flex" alignItems="center" gap={2} mb={3}>
+                        <LinearProgress
+                            variant="determinate"
+                            value={progressPercent}
+                            sx={{ height: 10, borderRadius: 5, flex: 1 }}
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                            {progressPercent}%
+                        </Typography>
+                    </Box>
                 )}
 
                 {checklist.length === 0 ? (
-                    <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                        No to-do tasks configured for this maintenance schedule.
-                    </Typography>
+                    <Box py={4} textAlign="center">
+                        <CheckCircleOutlineIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                        <Typography color="text.secondary">
+                            No to-do tasks configured for this maintenance schedule.
+                        </Typography>
+                    </Box>
                 ) : (
                     <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
                         {checklist.map((item) => (
@@ -234,8 +247,9 @@ export default function EquipmentSchedulePage() {
                                 sx={{
                                     borderRadius: 1,
                                     mb: 0.5,
-                                    border: '1px solid #f0f0f0',
-                                    '&:hover': { bgcolor: '#fafafa' },
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) },
                                 }}
                             >
                                 <ListItemIcon sx={{ minWidth: 40 }}>
@@ -252,7 +266,7 @@ export default function EquipmentSchedulePage() {
                                     primaryTypographyProps={{
                                         sx: {
                                             textDecoration: item.done ? 'line-through' : 'none',
-                                            color: item.done ? 'text.secondary' : 'text.primary',
+                                            color: item.done ? 'success.main' : 'text.primary',
                                             fontWeight: item.done ? 'normal' : 500,
                                         },
                                     }}
@@ -294,7 +308,7 @@ export default function EquipmentSchedulePage() {
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => setCompleteDialogOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained" color="success">
+                        <Button type="submit" variant="contained" color="success" sx={{ minHeight: 44 }}>
                             Complete
                         </Button>
                     </DialogActions>

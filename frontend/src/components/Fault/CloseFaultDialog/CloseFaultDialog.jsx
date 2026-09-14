@@ -99,7 +99,7 @@ export default function CloseFaultDialog({ open, onClose, onConfirm, fault, tool
                     variant="contained"
                     color="success"
                 >
-                    Close
+                    Confirm & Resolve
                 </Button>
             </DialogActions>
         </Dialog>

@@ -34,7 +34,9 @@ exports.createUser = async (req, res, next) => {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
         }
 
-        const userRole = role && ALLOWED_ROLES.includes(role) ? role : 'operator';
+        const userRole = (role && typeof role === 'string' && ALLOWED_ROLES.includes(role.trim()))
+            ? role.trim()
+            : 'operator';
         const normalizedEmail = email.trim().toLowerCase();
 
         const existing = await User.findOne({ email: normalizedEmail });
@@ -62,22 +64,47 @@ exports.createUser = async (req, res, next) => {
 
 exports.updateUserRole = async (req, res, next) => {
     try {
+        // 1. Protection: Admins cannot change their own role via API
+        if (String(req.params.id) === String(req.user.userId)) {
+            return res.status(400).json({ message: 'Admins cannot change their own role' });
+        }
+
         const { role } = req.body;
-        if (!role || !ALLOWED_ROLES.includes(role)) {
+        // 2. Validate role is a valid primitive string and in ALLOWED_ROLES
+        if (!role || typeof role !== 'string' || !ALLOWED_ROLES.includes(role.trim())) {
             return res.status(400).json({ message: `Role must be one of: ${ALLOWED_ROLES.join(', ')}` });
         }
 
-        const user = await User.findOneAndUpdate(
-            { _id: req.params.id, companyId: req.user.companyId },
-            { role },
-            { new: true, runValidators: true }
-        ).select('-password');
+        const targetRole = role.trim();
 
-        if (!user) {
+        // 3. Find the user within the same company (Tenant Isolation)
+        const targetUser = await User.findOne({
+            _id: req.params.id,
+            companyId: req.user.companyId,
+        });
+
+        if (!targetUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.json(user);
+        // 4. Protection: If demoting an existing admin, ensure they are not the only admin in the company
+        if (targetUser.role === 'admin' && targetRole !== 'admin') {
+            const adminCount = await User.countDocuments({
+                companyId: req.user.companyId,
+                role: 'admin',
+            });
+            if (adminCount <= 1) {
+                return res.status(400).json({ message: 'Cannot demote the only administrator of the company' });
+            }
+        }
+
+        targetUser.role = targetRole;
+        await targetUser.save();
+
+        const userResponse = targetUser.toObject();
+        delete userResponse.password;
+
+        res.json(userResponse);
     } catch (err) {
         next(err);
     }
@@ -85,18 +112,33 @@ exports.updateUserRole = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
     try {
-        if (req.params.id === req.user.userId) {
+        // 1. Protection: Cannot delete your own account via API
+        if (String(req.params.id) === String(req.user.userId)) {
             return res.status(400).json({ message: 'Cannot delete your own account' });
         }
 
-        const user = await User.findOneAndDelete({
+        // 2. Find target user in same tenant
+        const targetUser = await User.findOne({
             _id: req.params.id,
             companyId: req.user.companyId,
         });
 
-        if (!user) {
+        if (!targetUser) {
             return res.status(404).json({ message: 'User not found' });
         }
+
+        // 3. Protection: Cannot delete the only remaining admin in the company
+        if (targetUser.role === 'admin') {
+            const adminCount = await User.countDocuments({
+                companyId: req.user.companyId,
+                role: 'admin',
+            });
+            if (adminCount <= 1) {
+                return res.status(400).json({ message: 'Cannot delete the only administrator of the company' });
+            }
+        }
+
+        await User.findByIdAndDelete(req.params.id);
 
         res.status(204).end();
     } catch (err) {

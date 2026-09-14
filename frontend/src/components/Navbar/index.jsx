@@ -8,7 +8,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
-import { alpha } from '@mui/material/styles';
+import { alpha, useScrollTrigger } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeMode } from '../../contexts/ThemeContext';
 import MobileNav from './MobileNav';
@@ -18,6 +18,10 @@ import UserMenu from './UserMenu';
 export default function Navbar({ pages = [] }) {
     const { user } = useAuth();
     const { mode, toggleColorMode } = useThemeMode();
+    const isDark = mode === 'dark';
+
+    // Elevate AppBar when scrolled
+    const scrolled = useScrollTrigger({ disableHysteresis: true, threshold: 10 });
 
     const navPages = useMemo(() => {
         if (user?.role === 'operator') {
@@ -33,29 +37,45 @@ export default function Navbar({ pages = [] }) {
     }, [pages, user?.role]);
 
     return (
-        <AppBar position="sticky" elevation={0}>
+        <AppBar
+            position="sticky"
+            elevation={0}
+            sx={{
+                borderBottomColor: scrolled
+                    ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)')
+                    : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'),
+                boxShadow: scrolled
+                    ? (isDark ? '0 4px 24px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.06)')
+                    : 'none',
+                transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+            }}
+        >
             <Container maxWidth="xl">
-                <Toolbar disableGutters sx={{ minHeight: { xs: 56, sm: 64 } }}>
+                <Toolbar disableGutters sx={{ minHeight: { xs: 64, sm: 64 } }}>
                     <MobileNav display={{ xs: 'flex', sm: 'none' }} user={user} pages={navPages} />
                     <DesktopNav display={{ xs: 'none', sm: 'flex' }} user={user} pages={navPages} />
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
-                        <Tooltip title={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+                        <Tooltip title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
                             <IconButton
                                 onClick={toggleColorMode}
-                                aria-label="Toggle dark/light mode"
+                                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                                size="small"
                                 sx={{
-                                    color: 'text.primary',
-                                    bgcolor: (theme) => alpha(theme.palette.text.primary, 0.05),
-                                    '&:hover': { bgcolor: (theme) => alpha(theme.palette.text.primary, 0.1) },
-                                    p: 1,
+                                    width: 36,
+                                    height: 36,
+                                    color: 'text.secondary',
+                                    bgcolor: (theme) => alpha(theme.palette.text.primary, 0.06),
+                                    '&:hover': {
+                                        bgcolor: (theme) => alpha(theme.palette.text.primary, 0.1),
+                                        color: 'text.primary',
+                                    },
                                 }}
                             >
-                                {mode === 'dark' ? (
-                                    <LightModeIcon sx={{ fontSize: 20 }} />
-                                ) : (
-                                    <DarkModeIcon sx={{ fontSize: 20 }} />
-                                )}
+                                {isDark
+                                    ? <LightModeIcon sx={{ fontSize: 18 }} />
+                                    : <DarkModeIcon sx={{ fontSize: 18 }} />
+                                }
                             </IconButton>
                         </Tooltip>
 

@@ -18,16 +18,27 @@ import {
     CircularProgress,
     TextField,
     InputAdornment,
+    Tooltip,
     Chip,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import PeopleIcon from '@mui/icons-material/People';
+import SaveIcon from '@mui/icons-material/Save';
+import CloseIcon from '@mui/icons-material/Close';
 
+import { useAuth } from '../../../contexts/AuthContext';
 import { CreateUserForm } from '../UserForms/UserForms';
 import LoadingComponent from '../../LoadingComponent/LoadingComponent';
 import ErrorComponent from '../../ErrorComponent/ErrorComponent';
 import DialogComponent from '../../DialogComponent';
+
+const ROLE_COLOR_MAP = {
+    admin: 'error',
+    mechanic: 'primary',
+    operator: 'default',
+};
 
 export default function UserPanel({
     users = [],
@@ -37,9 +48,14 @@ export default function UserPanel({
     onDelete,
     onRoleChange,
 }) {
+    const { user: currentUser } = useAuth();
+    const currentUserId = currentUser?.id || currentUser?._id;
+
     const [dialog, setDialog] = useState({ type: null, user: null });
     const [savingUserId, setSavingUserId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    // Store pending unsaved role changes per user id: { [userId]: 'newRole' }
+    const [pendingRoles, setPendingRoles] = useState({});
 
     const openDialog = useCallback((type, user = null) => {
         setDialog({ type, user });
@@ -47,6 +63,7 @@ export default function UserPanel({
     const closeDialog = useCallback(() => setDialog({ type: null, user: null }), []);
 
     const handleDelete = useCallback(async () => {
+        if (!dialog.user) return;
         await onDelete(dialog.user._id);
         closeDialog();
     }, [dialog.user, onDelete, closeDialog]);
@@ -59,11 +76,32 @@ export default function UserPanel({
         [onCreate, closeDialog]
     );
 
-    const handleRoleSelect = async (userId, newRole) => {
+    const handleRoleSelectChange = (userId, newRole) => {
+        setPendingRoles((prev) => ({
+            ...prev,
+            [userId]: newRole,
+        }));
+    };
+
+    const handleCancelRoleChange = (userId) => {
+        setPendingRoles((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+        });
+    };
+
+    const handleSaveRole = async (userId) => {
+        const newRole = pendingRoles[userId];
         if (!newRole) return;
         setSavingUserId(userId);
         try {
             await onRoleChange(userId, newRole);
+            setPendingRoles((prev) => {
+                const next = { ...prev };
+                delete next[userId];
+                return next;
+            });
         } finally {
             setSavingUserId(null);
         }
@@ -72,18 +110,26 @@ export default function UserPanel({
     const filteredUsers = useMemo(() => {
         if (!searchQuery.trim()) return users;
         const q = searchQuery.toLowerCase();
-        return users.filter(u =>
-            (u.name || '').toLowerCase().includes(q) ||
-            (u.email || '').toLowerCase().includes(q)
+        return users.filter(
+            (u) =>
+                (u.name || '').toLowerCase().includes(q) ||
+                (u.email || '').toLowerCase().includes(q)
         );
     }, [users, searchQuery]);
 
-    if (loading) return <LoadingComponent />;
+    if (loading) return <LoadingComponent message="Loading users..." />;
     if (error) return <ErrorComponent message={error} />;
 
     return (
         <Grid size={{ xs: 12, lg: 6 }}>
-            <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2 }}>
+            <Paper
+                variant="outlined"
+                sx={{
+                    p: { xs: 2, sm: 2.5 },
+                    borderRadius: 3,
+                    borderLeft: '4px solid #2563EB',
+                }}
+            >
                 <Box
                     sx={{
                         display: 'flex',
@@ -94,20 +140,24 @@ export default function UserPanel({
                         mb: 2,
                     }}
                 >
-                    <Box>
-                        <Typography variant="h6" fontWeight={700}>
-                            User Management
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                            {users.length} registered accounts
-                        </Typography>
+                    <Box display="flex" alignItems="center" gap={1.25}>
+                        <PeopleIcon color="primary" />
+                        <Box>
+                            <Typography variant="h6" fontWeight={700}>
+                                User Management
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {users.length} registered accounts
+                            </Typography>
+                        </Box>
                     </Box>
                     <Button
                         variant="contained"
+                        color="primary"
                         size="small"
                         startIcon={<AddIcon />}
                         onClick={() => openDialog('create')}
-                        sx={{ width: { xs: '100%', sm: 'auto' } }}
+                        sx={{ width: { xs: '100%', sm: 'auto' }, fontWeight: 700, minHeight: 36 }}
                     >
                         Create User
                     </Button>
@@ -137,7 +187,11 @@ export default function UserPanel({
                         </Typography>
                     ) : (
                         filteredUsers.map((u) => {
+                            const isSelf = Boolean(currentUserId && String(u._id) === String(currentUserId));
                             const isSaving = savingUserId === u._id;
+                            const currentRole = u.role || 'operator';
+                            const selectedRole = pendingRoles[u._id] !== undefined ? pendingRoles[u._id] : currentRole;
+                            const hasChanged = selectedRole !== currentRole;
 
                             return (
                                 <Paper
@@ -146,6 +200,8 @@ export default function UserPanel({
                                     sx={{
                                         p: 1.75,
                                         borderRadius: 2,
+                                        borderLeft: isSelf ? '3px solid #2563EB' : '3px solid',
+                                        borderColor: isSelf ? '#2563EB' : 'divider',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         gap: 1.25,
@@ -153,33 +209,59 @@ export default function UserPanel({
                                 >
                                     <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                                         <Box sx={{ minWidth: 0, mr: 1 }}>
-                                            <Typography variant="body2" fontWeight={700} noWrap>
-                                                {u.name}
-                                            </Typography>
+                                            <Box display="flex" alignItems="center" gap={0.75} flexWrap="wrap">
+                                                <Typography variant="body2" fontWeight={700} noWrap>
+                                                    {u.name}
+                                                </Typography>
+                                                {isSelf && (
+                                                    <Chip
+                                                        label="You"
+                                                        size="small"
+                                                        color="primary"
+                                                        sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                                <Chip
+                                                    label={currentRole.toUpperCase()}
+                                                    size="small"
+                                                    color={ROLE_COLOR_MAP[currentRole] || 'default'}
+                                                    variant="outlined"
+                                                    sx={{ height: 18, fontSize: '0.6rem', fontWeight: 600 }}
+                                                />
+                                            </Box>
                                             <Typography
                                                 variant="caption"
                                                 color="text.secondary"
-                                                sx={{ wordBreak: 'break-all', display: 'block' }}
+                                                sx={{ wordBreak: 'break-all', display: 'block', mt: 0.25 }}
                                             >
                                                 {u.email}
                                             </Typography>
                                         </Box>
-                                        <IconButton
-                                            size="small"
-                                            color="error"
-                                            onClick={() => openDialog('delete', u)}
-                                            title="Delete User"
-                                            aria-label={`Delete ${u.name}`}
-                                            sx={{ flexShrink: 0 }}
+                                        <Tooltip
+                                            title={isSelf ? 'You cannot delete your own account' : 'Delete user'}
+                                            arrow
                                         >
-                                            <DeleteIcon fontSize="small" />
-                                        </IconButton>
+                                            <span>
+                                                <IconButton
+                                                    size="small"
+                                                    color="error"
+                                                    disabled={isSelf}
+                                                    onClick={() => openDialog('delete', u)}
+                                                    aria-label={`Delete ${u.name}`}
+                                                    sx={{ flexShrink: 0 }}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
                                     </Box>
 
                                     <Box
                                         display="flex"
                                         alignItems="center"
                                         justifyContent="space-between"
+                                        flexWrap="wrap"
+                                        gap={1}
                                         pt={1}
                                         borderTop="1px solid"
                                         borderColor="divider"
@@ -188,19 +270,51 @@ export default function UserPanel({
                                             Role
                                         </Typography>
                                         <Box display="flex" alignItems="center" gap={1}>
-                                            <FormControl variant="outlined" size="small">
-                                                <Select
-                                                    value={u.role || 'operator'}
-                                                    disabled={isSaving}
-                                                    onChange={(e) => handleRoleSelect(u._id, e.target.value)}
-                                                    sx={{ fontSize: '0.8rem', height: 30 }}
-                                                >
-                                                    <MenuItem value="operator">Operator</MenuItem>
-                                                    <MenuItem value="mechanic">Mechanic</MenuItem>
-                                                    <MenuItem value="admin">Admin</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                            {isSaving && <CircularProgress size={14} />}
+                                            <Tooltip
+                                                title={isSelf ? 'Admins cannot change their own role' : ''}
+                                                arrow
+                                                disableHoverListener={!isSelf}
+                                            >
+                                                <span>
+                                                    <FormControl variant="outlined" size="small">
+                                                        <Select
+                                                            value={selectedRole}
+                                                            disabled={isSelf || isSaving}
+                                                            onChange={(e) => handleRoleSelectChange(u._id, e.target.value)}
+                                                            sx={{ fontSize: '0.8rem', height: 32, borderRadius: 1 }}
+                                                        >
+                                                            <MenuItem value="operator">Operator</MenuItem>
+                                                            <MenuItem value="mechanic">Mechanic</MenuItem>
+                                                            <MenuItem value="admin">Admin</MenuItem>
+                                                        </Select>
+                                                    </FormControl>
+                                                </span>
+                                            </Tooltip>
+
+                                            {hasChanged && !isSelf && (
+                                                <Box display="flex" alignItems="center" gap={0.5}>
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        color="primary"
+                                                        startIcon={!isSaving && <SaveIcon sx={{ fontSize: 14 }} />}
+                                                        disabled={isSaving}
+                                                        onClick={() => handleSaveRole(u._id)}
+                                                        sx={{ minHeight: 32, px: 1.25, fontSize: '0.75rem', fontWeight: 700 }}
+                                                    >
+                                                        {isSaving ? <CircularProgress size={14} color="inherit" /> : 'Save'}
+                                                    </Button>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleCancelRoleChange(u._id)}
+                                                        title="Cancel change"
+                                                        disabled={isSaving}
+                                                        sx={{ p: 0.5 }}
+                                                    >
+                                                        <CloseIcon sx={{ fontSize: 16 }} />
+                                                    </IconButton>
+                                                </Box>
+                                            )}
                                         </Box>
                                     </Box>
                                 </Paper>
@@ -210,26 +324,40 @@ export default function UserPanel({
                 </Box>
 
                 {/* Desktop Table View (>= sm) */}
-                <TableContainer sx={{ display: { xs: 'none', sm: 'block' }, width: '100%', overflowX: 'auto' }}>
+                <TableContainer sx={{ display: { xs: 'none', sm: 'block' }, width: '100%', overflowX: 'auto', borderRadius: 2 }}>
                     <Table size="small">
-                        <TableHead>
+                        <TableHead sx={{ bgcolor: 'background.subtle' }}>
                             <TableRow>
-                                <TableCell>Name</TableCell>
-                                <TableCell>Email</TableCell>
-                                <TableCell>Role</TableCell>
-                                <TableCell align="right">Actions</TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Name</TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Email</TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Role</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {filteredUsers.map((u) => {
+                                const isSelf = Boolean(currentUserId && String(u._id) === String(currentUserId));
                                 const isSaving = savingUserId === u._id;
+                                const currentRole = u.role || 'operator';
+                                const selectedRole = pendingRoles[u._id] !== undefined ? pendingRoles[u._id] : currentRole;
+                                const hasChanged = selectedRole !== currentRole;
 
                                 return (
-                                    <TableRow key={u._id} hover>
+                                    <TableRow key={u._id} hover sx={{ height: 56 }}>
                                         <TableCell>
-                                            <Typography variant="body2" fontWeight={600}>
-                                                {u.name}
-                                            </Typography>
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <Typography variant="body2" fontWeight={600}>
+                                                    {u.name}
+                                                </Typography>
+                                                {isSelf && (
+                                                    <Chip
+                                                        label="You"
+                                                        size="small"
+                                                        color="primary"
+                                                        sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                            </Box>
                                         </TableCell>
                                         <TableCell>
                                             <Typography variant="caption" color="text.secondary">
@@ -238,31 +366,75 @@ export default function UserPanel({
                                         </TableCell>
                                         <TableCell>
                                             <Box display="flex" alignItems="center" gap={1}>
-                                                <FormControl variant="outlined" size="small" sx={{ minWidth: 110 }}>
-                                                    <Select
-                                                        value={u.role || 'operator'}
-                                                        disabled={isSaving}
-                                                        onChange={(e) => handleRoleSelect(u._id, e.target.value)}
-                                                        sx={{ fontSize: '0.8rem', height: 32 }}
-                                                    >
-                                                        <MenuItem value="operator">Operator</MenuItem>
-                                                        <MenuItem value="mechanic">Mechanic</MenuItem>
-                                                        <MenuItem value="admin">Admin</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                                {isSaving && <CircularProgress size={16} />}
+                                                <Tooltip
+                                                    title={isSelf ? 'Admins cannot change their own role' : ''}
+                                                    arrow
+                                                    disableHoverListener={!isSelf}
+                                                >
+                                                    <span>
+                                                        <FormControl variant="outlined" size="small" sx={{ minWidth: 110 }}>
+                                                            <Select
+                                                                value={selectedRole}
+                                                                disabled={isSelf || isSaving}
+                                                                onChange={(e) => handleRoleSelectChange(u._id, e.target.value)}
+                                                                sx={{
+                                                                    fontSize: '0.8rem',
+                                                                    height: 32,
+                                                                    borderRadius: 1,
+                                                                    borderColor: hasChanged ? 'primary.main' : undefined,
+                                                                }}
+                                                            >
+                                                                <MenuItem value="operator">Operator</MenuItem>
+                                                                <MenuItem value="mechanic">Mechanic</MenuItem>
+                                                                <MenuItem value="admin">Admin</MenuItem>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </span>
+                                                </Tooltip>
+
+                                                {hasChanged && !isSelf && (
+                                                    <Box display="flex" alignItems="center" gap={0.5}>
+                                                        <Button
+                                                            size="small"
+                                                            variant="contained"
+                                                            color="primary"
+                                                            startIcon={!isSaving && <SaveIcon sx={{ fontSize: 14 }} />}
+                                                            disabled={isSaving}
+                                                            onClick={() => handleSaveRole(u._id)}
+                                                            sx={{ minHeight: 32, px: 1.25, fontSize: '0.75rem', fontWeight: 700 }}
+                                                        >
+                                                            {isSaving ? <CircularProgress size={14} color="inherit" /> : 'Save'}
+                                                        </Button>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleCancelRoleChange(u._id)}
+                                                            title="Cancel change"
+                                                            disabled={isSaving}
+                                                            sx={{ p: 0.5 }}
+                                                        >
+                                                            <CloseIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
+                                                    </Box>
+                                                )}
                                             </Box>
                                         </TableCell>
                                         <TableCell align="right">
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() => openDialog('delete', u)}
-                                                title="Delete User"
-                                                aria-label={`Delete ${u.name}`}
+                                            <Tooltip
+                                                title={isSelf ? 'You cannot delete your own account' : 'Delete user'}
+                                                arrow
                                             >
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
+                                                <span>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        disabled={isSelf}
+                                                        onClick={() => openDialog('delete', u)}
+                                                        aria-label={`Delete ${u.name}`}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
                                         </TableCell>
                                     </TableRow>
                                 );

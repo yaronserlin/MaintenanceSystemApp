@@ -152,18 +152,27 @@ export default function EquipmentPage() {
                     size="small"
                     startIcon={<ArrowBackIcon />}
                     onClick={() => navigate('/equipment')}
-                    sx={{ color: 'text.secondary' }}
+                    color="primary"
                 >
                     Back to Fleet Directory
                 </Button>
             </Box>
 
             {/* Equipment Header Banner */}
-            <Paper variant="outlined" sx={{ p: { xs: 2.5, sm: 3 }, borderRadius: 3, mb: 3 }}>
+            <Paper
+                variant="outlined"
+                sx={{
+                    p: { xs: 2.5, sm: 3 },
+                    borderRadius: 3,
+                    mb: 3,
+                    bgcolor: openFaultsCount > 0 ? 'rgba(220,38,38,0.04)' : 'rgba(22,163,74,0.04)',
+                    borderLeft: openFaultsCount > 0 ? '4px solid #DC2626' : '4px solid #16A34A',
+                }}
+            >
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
                     <Box>
                         <Box display="flex" alignItems="center" gap={1.5} mb={1}>
-                            <Typography variant="h4" fontWeight={700}>
+                            <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">
                                 {tool.name}
                             </Typography>
                             {tool.localSerialNumber && (
@@ -179,7 +188,7 @@ export default function EquipmentPage() {
                                 label={openFaultsCount > 0 ? `${openFaultsCount} Active Fault${openFaultsCount > 1 ? 's' : ''}` : 'Operational'}
                                 color={openFaultsCount > 0 ? 'error' : 'success'}
                                 size="small"
-                                sx={{ fontWeight: 600 }}
+                                sx={{ fontWeight: 700, fontSize: '0.8rem', height: 28 }}
                             />
                         </Box>
 
@@ -200,7 +209,7 @@ export default function EquipmentPage() {
                                     label={`${tool.currentEngineHours} Operating Hours`}
                                     size="small"
                                     variant="outlined"
-                                    color="secondary"
+                                    color="primary"
                                     sx={{ fontWeight: 600 }}
                                 />
                             )}
@@ -222,8 +231,8 @@ export default function EquipmentPage() {
                         onChange={handleChange}
                         aria-label="tabs for equipment details"
                         variant="fullWidth"
-                        textColor="secondary"
-                        indicatorColor="secondary"
+                        textColor="primary"
+                        indicatorColor="primary"
                     >
                         <Tab
                             label={
@@ -255,7 +264,7 @@ export default function EquipmentPage() {
                         <Tab
                             label={
                                 <Box display="flex" alignItems="center" gap={1}>
-                                    <span>Manuals & Books</span>
+                                    <span>Manuals &amp; Books</span>
                                     <Chip
                                         label={booksCount}
                                         size="small"
@@ -273,8 +282,10 @@ export default function EquipmentPage() {
                         <Typography variant="h6">Reported Faults</Typography>
                         <Button
                             variant="contained"
+                            color="primary"
                             startIcon={<AddIcon />}
                             onClick={() => setCreateDialogOpen(true)}
+                            sx={{ minHeight: 44 }}
                         >
                             Create
                         </Button>

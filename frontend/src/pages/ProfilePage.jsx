@@ -6,7 +6,6 @@ import {
     Box,
     Card,
     CardContent,
-    CircularProgress,
     Alert,
     Avatar,
     Chip,
@@ -25,6 +24,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import faultService from '../services/faultsService';
 import { getMediaUrl } from '../utils/mediaUtils';
+import LoadingComponent from '../components/LoadingComponent/LoadingComponent';
+
+const ROLE_COLOR = { admin: 'error', mechanic: 'primary', operator: 'success' };
+const ROLE_BORDER = { admin: '#DC2626', mechanic: '#2563EB', operator: '#16A34A' };
 
 export default function ProfilePage() {
     const { user, userId } = useAuth();
@@ -65,13 +68,7 @@ export default function ProfilePage() {
         return faults.filter(f => f.status === statusFilter);
     }, [faults, statusFilter]);
 
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
+    if (loading) return <LoadingComponent message="Loading profile and activity..." />;
 
     if (error) {
         return (
@@ -84,33 +81,49 @@ export default function ProfilePage() {
     const openCount = faults.filter(f => f.status === 'open').length;
     const closedCount = faults.filter(f => f.status === 'closed').length;
     const avatarSrc = getMediaUrl(user?.avatar || user?.avatarUrl);
+    const userRole = user?.role || 'operator';
+    const roleThemeColor = ROLE_COLOR[userRole] || 'primary';
+    const roleBorderColor = ROLE_BORDER[userRole] || '#2563EB';
 
     return (
         <Container sx={{ mt: 3, mb: 6 }}>
             {/* User Profile Summary Header */}
-            <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 4 }}>
+            <Paper
+                variant="outlined"
+                sx={{
+                    p: { xs: 2.5, sm: 3 },
+                    borderRadius: 3,
+                    mb: 4,
+                    borderLeft: `4px solid ${roleBorderColor}`,
+                }}
+            >
                 <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-                    <Box display="flex" alignItems="center" gap={2}>
+                    <Box display="flex" alignItems="center" gap={2.5}>
                         <Avatar
                             src={avatarSrc}
                             alt={user?.name}
-                            sx={{ width: 64, height: 64, bgcolor: 'secondary.main', fontSize: '1.5rem', fontWeight: 700 }}
+                            sx={{
+                                width: 72,
+                                height: 72,
+                                bgcolor: `${roleThemeColor}.main`,
+                                color: '#FFFFFF',
+                                fontSize: '1.75rem',
+                                fontWeight: 800,
+                            }}
                         >
                             {user?.name?.charAt(0) || 'U'}
                         </Avatar>
                         <Box>
-                            <Box display="flex" alignItems="center" gap={1}>
-                                <Typography variant="h5" fontWeight={700}>
-                                    {user?.name || 'Technician'}
+                            <Box display="flex" alignItems="center" gap={1.25} mb={0.5}>
+                                <Typography variant="h5" fontWeight={800} letterSpacing="-0.02em">
+                                    {user?.name || 'User'}
                                 </Typography>
-                                {user?.role && (
-                                    <Chip
-                                        label={user.role.toUpperCase()}
-                                        color={user.role === 'admin' ? 'error' : 'secondary'}
-                                        size="small"
-                                        sx={{ fontWeight: 700, height: 22 }}
-                                    />
-                                )}
+                                <Chip
+                                    label={userRole.toUpperCase()}
+                                    color={roleThemeColor}
+                                    size="small"
+                                    sx={{ fontWeight: 700, height: 22, fontSize: '0.7rem' }}
+                                />
                             </Box>
                             <Typography variant="body2" color="text.secondary">
                                 {user?.email}
@@ -120,11 +133,37 @@ export default function ProfilePage() {
 
                     <Button
                         variant="outlined"
+                        color="primary"
                         startIcon={<ManageAccountsIcon />}
                         onClick={() => navigate('/account')}
+                        sx={{ minHeight: 40 }}
                     >
                         Edit Account Details
                     </Button>
+                </Box>
+
+                {/* Stat pills */}
+                <Box display="flex" gap={1} mt={2.5} pt={2} borderTop="1px solid" borderColor="divider" flexWrap="wrap">
+                    <Chip
+                        size="small"
+                        label={`${faults.length} Reported`}
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                    />
+                    <Chip
+                        size="small"
+                        label={`${openCount} Open`}
+                        color="error"
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                    />
+                    <Chip
+                        size="small"
+                        label={`${closedCount} Resolved`}
+                        color="success"
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                    />
                 </Box>
             </Paper>
 
@@ -132,35 +171,35 @@ export default function ProfilePage() {
             <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={2.5}>
                 <Box display="flex" alignItems="center" gap={1}>
                     <HistoryIcon color="primary" />
-                    <Typography variant="h5" fontWeight={700}>
+                    <Typography variant="h5" fontWeight={800} letterSpacing="-0.01em">
                         My Reported Activity
                     </Typography>
                 </Box>
 
-                <Box display="flex" gap={1}>
+                <Box display="flex" gap={0.75} flexWrap="wrap">
                     <Chip
                         label={`All (${faults.length})`}
                         size="small"
                         variant={statusFilter === 'all' ? 'filled' : 'outlined'}
-                        color="primary"
+                        color={statusFilter === 'all' ? 'primary' : 'default'}
                         onClick={() => setStatusFilter('all')}
-                        sx={{ fontWeight: 600 }}
+                        sx={{ fontWeight: 600, cursor: 'pointer' }}
                     />
                     <Chip
                         label={`Open (${openCount})`}
                         size="small"
                         variant={statusFilter === 'open' ? 'filled' : 'outlined'}
-                        color="error"
+                        color={statusFilter === 'open' ? 'error' : 'default'}
                         onClick={() => setStatusFilter('open')}
-                        sx={{ fontWeight: 600 }}
+                        sx={{ fontWeight: 600, cursor: 'pointer' }}
                     />
                     <Chip
                         label={`Closed (${closedCount})`}
                         size="small"
                         variant={statusFilter === 'closed' ? 'filled' : 'outlined'}
-                        color="success"
+                        color={statusFilter === 'closed' ? 'success' : 'default'}
                         onClick={() => setStatusFilter('closed')}
-                        sx={{ fontWeight: 600 }}
+                        sx={{ fontWeight: 600, cursor: 'pointer' }}
                     />
                 </Box>
             </Box>
@@ -170,11 +209,11 @@ export default function ProfilePage() {
                     variant="outlined"
                     sx={{ p: 5, textAlign: 'center', bgcolor: 'background.paper', borderRadius: 3 }}
                 >
-                    <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
-                    <Typography variant="h6" fontWeight={600}>
+                    <CheckCircleIcon sx={{ fontSize: 52, color: 'success.main', mb: 1.5, opacity: 0.8 }} />
+                    <Typography variant="h6" fontWeight={700} gutterBottom>
                         {statusFilter !== 'all' ? 'No matching tickets' : 'No activity logged yet'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary">
                         {statusFilter !== 'all'
                             ? 'Try switching to a different status filter.'
                             : 'When you report equipment faults or incidents, they will appear here.'}
@@ -185,68 +224,92 @@ export default function ProfilePage() {
                     {filteredFaults.map(fault => {
                         const toolId = fault.tool?._id || fault.tool;
                         const toolName = fault.tool?.name;
+                        const isOpen = fault.status === 'open';
 
                         return (
-                            <Grid size={{ xs: 12 }} key={fault._id}>
+                            <Grid size={{ xs: 12, sm: 6 }} key={fault._id}>
                                 <Card
                                     sx={{
-                                        transition: 'box-shadow 0.2s',
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        borderLeft: `4px solid ${isOpen ? '#DC2626' : '#16A34A'}`,
+                                        borderRadius: '12px',
+                                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                                         '&:hover': {
+                                            transform: 'translateY(-2px)',
                                             boxShadow: (theme) => theme.palette.mode === 'dark'
-                                                ? '0 4px 12px rgba(0,0,0,0.4)'
-                                                : '0 4px 12px rgba(0,0,0,0.06)',
+                                                ? '0 6px 16px rgba(0,0,0,0.5)'
+                                                : '0 6px 16px rgba(0,0,0,0.08)',
                                         },
                                     }}
                                 >
-                                    <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-                                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} mb={1}>
+                                    <CardContent sx={{ p: 2.5, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1.5} mb={1}>
                                             <Box>
-                                                <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
-                                                    <Typography variant="h6" fontWeight="bold">
-                                                        {fault.code || 'Fault'}
-                                                    </Typography>
-                                                    <Chip
-                                                        icon={fault.status === 'open' ? <WarningAmberIcon /> : <CheckCircleIcon />}
-                                                        label={fault.status === 'open' ? 'Open' : 'Closed'}
-                                                        size="small"
-                                                        color={fault.status === 'open' ? 'error' : 'success'}
-                                                        sx={{ fontWeight: 600 }}
-                                                    />
-                                                </Box>
+                                                <Typography variant="h6" fontWeight={700} lineHeight={1.2}>
+                                                    {fault.code || 'Fault'}
+                                                </Typography>
                                                 {toolName && (
-                                                    <Typography variant="caption" color="secondary.main" fontWeight={600} display="block">
+                                                    <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mt: 0.25 }}>
                                                         Equipment: {toolName}
                                                     </Typography>
                                                 )}
                                             </Box>
-
-                                            {toolId && (
-                                                <Button
-                                                    size="small"
-                                                    endIcon={<ChevronRightIcon />}
-                                                    onClick={() => navigate(`/equipment/${toolId}`)}
-                                                >
-                                                    View Equipment
-                                                </Button>
-                                            )}
+                                            <Chip
+                                                icon={isOpen ? <WarningAmberIcon sx={{ fontSize: '0.9rem !important' }} /> : <CheckCircleIcon sx={{ fontSize: '0.9rem !important' }} />}
+                                                label={isOpen ? 'Open' : 'Closed'}
+                                                size="small"
+                                                color={isOpen ? 'error' : 'success'}
+                                                sx={{ fontWeight: 700, fontSize: '0.72rem' }}
+                                            />
                                         </Box>
 
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                        <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                            sx={{
+                                                mb: 2,
+                                                flexGrow: 1,
+                                                lineHeight: 1.45,
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 3,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                            }}
+                                        >
                                             {fault.description}
                                         </Typography>
 
-                                        <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-                                            {fault.engineHours !== undefined && (
+                                        <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} pt={1} borderTop="1px solid" borderColor="divider">
+                                            {fault.engineHours !== undefined ? (
                                                 <Chip
                                                     icon={<SpeedIcon sx={{ fontSize: '0.9rem !important' }} />}
                                                     label={`${fault.engineHours} hrs`}
                                                     size="small"
                                                     variant="outlined"
+                                                    color="primary"
+                                                    sx={{ height: 22, fontSize: '0.72rem', fontWeight: 600 }}
                                                 />
-                                            )}
-                                            <Typography variant="caption" color="text.secondary">
-                                                Reported on: {new Date(fault.createdAt).toLocaleDateString('en-GB')}
-                                            </Typography>
+                                            ) : <Box />}
+
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {new Date(fault.createdAt).toLocaleDateString('en-GB')}
+                                                </Typography>
+                                                {toolId && (
+                                                    <Button
+                                                        size="small"
+                                                        variant="text"
+                                                        color="primary"
+                                                        endIcon={<ChevronRightIcon />}
+                                                        onClick={() => navigate(`/equipment/${toolId}`)}
+                                                        sx={{ fontWeight: 700, p: '2px 6px', minHeight: 28 }}
+                                                    >
+                                                        Details
+                                                    </Button>
+                                                )}
+                                            </Box>
                                         </Box>
                                     </CardContent>
                                 </Card>

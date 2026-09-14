@@ -2,72 +2,93 @@
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import Avatar from '@mui/material/Avatar';
+import Chip from '@mui/material/Chip';
 import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import BuildCircleIcon from '@mui/icons-material/BuildCircle';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
+import PersonIcon from '@mui/icons-material/Person';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import LogoutIcon from '@mui/icons-material/Logout';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
+import { alpha } from '@mui/material/styles';
+import { getMediaUrl } from '../../utils/mediaUtils';
+import { useThemeMode } from '../../contexts/ThemeContext';
+
+const DRAWER_WIDTH = 280;
+
+const PAGE_ICON_MAP = {
+    'dashboard':      <DashboardIcon fontSize="small" />,
+    'my faults':      <ReportProblemIcon fontSize="small" />,
+    'faults':         <ReportProblemIcon fontSize="small" />,
+    'equipment':      <PrecisionManufacturingIcon fontSize="small" />,
+    'profile':        <PersonIcon fontSize="small" />,
+    'account':        <ManageAccountsIcon fontSize="small" />,
+    'admin':          <AdminPanelSettingsIcon fontSize="small" />,
+};
+
+const PAGE_TO_PATH = (page) => {
+    const lower = page.toLowerCase();
+    if (lower === 'faults' || lower === 'my faults') return '/dashboard';
+    return `/${lower}`;
+};
+
+const ROLE_COLOR = { admin: 'error', mechanic: 'primary', operator: 'success' };
+const ROLE_LABEL = { admin: 'Admin', mechanic: 'Mechanic', operator: 'Operator' };
 
 export default function MobileNav({ display, user, pages }) {
-    const [anchorEl, setAnchorEl] = useState(null);
+    const [open, setOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    const { mode, toggleColorMode } = useThemeMode();
+    const isDark = mode === 'dark';
 
-    const handleOpen = e => setAnchorEl(e.currentTarget);
-    const handleClose = () => setAnchorEl(null);
+    const handleOpen  = () => setOpen(true);
+    const handleClose = () => setOpen(false);
+
+    const goTo = (path) => {
+        handleClose();
+        navigate(path);
+    };
+
+    const avatarSrc = getMediaUrl(user?.avatar || user?.avatarUrl);
 
     return (
         <>
-            <Box sx={{ flexGrow: 1, display }}>
+            {/* ── Hamburger Button ───────────────────────────── */}
+            <Box sx={{ display, alignItems: 'center' }}>
                 {user && (
-                    <>
-                        <IconButton
-                            size="medium"
-                            onClick={handleOpen}
-                            aria-label="Open navigation menu"
-                            sx={{ mr: 1, color: 'text.primary' }}
-                        >
-                            <MenuIcon />
-                        </IconButton>
-                        <Menu
-                            anchorEl={anchorEl}
-                            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                            keepMounted
-                            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                            open={Boolean(anchorEl)}
-                            onClose={handleClose}
-                            PaperProps={{
-                                sx: { minWidth: 180, mt: 1, borderRadius: 2 }
-                            }}
-                        >
-                            {pages.map(page => {
-                                const targetPath = (page.toLowerCase() === 'faults' || page.toLowerCase() === 'my faults')
-                                    ? '/dashboard'
-                                    : `/${page.toLowerCase()}`;
-                                const isActive = location.pathname === targetPath || (targetPath !== '/dashboard' && location.pathname.startsWith(targetPath));
-
-                                return (
-                                    <MenuItem
-                                        key={page}
-                                        selected={isActive}
-                                        onClick={() => {
-                                            handleClose();
-                                            navigate(targetPath);
-                                        }}
-                                        sx={{ py: 1.25 }}
-                                    >
-                                        <Typography fontWeight={isActive ? 700 : 500} color="text.primary">
-                                            {page}
-                                        </Typography>
-                                    </MenuItem>
-                                );
-                            })}
-                        </Menu>
-                    </>
+                    <IconButton
+                        size="medium"
+                        onClick={handleOpen}
+                        aria-label="Open navigation menu"
+                        sx={{
+                            width: 44,
+                            height: 44,
+                            color: 'text.primary',
+                            mr: 1,
+                        }}
+                    >
+                        <MenuIcon />
+                    </IconButton>
                 )}
             </Box>
 
+            {/* ── Brand Logo (mobile center) ─────────────────── */}
             <Box
                 component={RouterLink}
                 to="/dashboard"
@@ -80,19 +101,210 @@ export default function MobileNav({ display, user, pages }) {
                     color: 'text.primary',
                 }}
             >
-                <BuildCircleIcon sx={{ color: 'text.primary', fontSize: 24 }} />
-                <Typography
-                    variant="subtitle1"
-                    noWrap
+                <Box
                     sx={{
-                        fontWeight: 800,
-                        letterSpacing: '0.04em',
-                        color: 'text.primary',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 30,
+                        height: 30,
+                        borderRadius: 1.5,
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        flexShrink: 0,
                     }}
+                >
+                    <BuildCircleIcon sx={{ fontSize: 17 }} />
+                </Box>
+                <Typography
+                    variant="subtitle2"
+                    noWrap
+                    sx={{ fontWeight: 800, letterSpacing: '-0.01em', color: 'text.primary' }}
                 >
                     MAINTENANCE
                 </Typography>
             </Box>
+
+            {/* ── Drawer ─────────────────────────────────────── */}
+            <Drawer
+                anchor="left"
+                open={open}
+                onClose={handleClose}
+                PaperProps={{
+                    sx: {
+                        width: DRAWER_WIDTH,
+                        display: 'flex',
+                        flexDirection: 'column',
+                    },
+                }}
+            >
+                {/* Drawer Header */}
+                <Box
+                    sx={{
+                        p: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        minHeight: 64,
+                    }}
+                >
+                    <Box display="flex" alignItems="center" gap={1.5}>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 32,
+                                height: 32,
+                                borderRadius: 1.5,
+                                bgcolor: 'primary.main',
+                                color: 'primary.contrastText',
+                            }}
+                        >
+                            <BuildCircleIcon sx={{ fontSize: 18 }} />
+                        </Box>
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight={800} letterSpacing="-0.01em">
+                                MAINTENANCE
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1 }}>
+                                {user?.role === 'operator' ? 'Operator Portal' : 'Ops Manager'}
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <IconButton size="small" onClick={handleClose} aria-label="Close navigation menu">
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+                </Box>
+
+                {/* User Info */}
+                {user && (
+                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar
+                            src={avatarSrc}
+                            alt={user.name}
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                bgcolor: `${ROLE_COLOR[user.role] || 'primary'}.main`,
+                                fontSize: '0.9rem',
+                                fontWeight: 700,
+                            }}
+                        >
+                            {user.name?.charAt(0)?.toUpperCase()}
+                        </Avatar>
+                        <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={700} noWrap>
+                                {user.name}
+                            </Typography>
+                            <Chip
+                                label={ROLE_LABEL[user.role] || user.role}
+                                size="small"
+                                color={ROLE_COLOR[user.role] || 'primary'}
+                                sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, mt: 0.25 }}
+                            />
+                        </Box>
+                    </Box>
+                )}
+
+                <Divider />
+
+                {/* Nav Items */}
+                <List sx={{ flexGrow: 1, py: 1 }}>
+                    {pages.map(page => {
+                        const targetPath = PAGE_TO_PATH(page);
+                        const isActive =
+                            location.pathname === targetPath ||
+                            (targetPath !== '/dashboard' && location.pathname.startsWith(targetPath));
+                        const icon = PAGE_ICON_MAP[page.toLowerCase()] || <DashboardIcon fontSize="small" />;
+
+                        return (
+                            <ListItem key={page} disablePadding sx={{ px: 1, mb: 0.5 }}>
+                                <ListItemButton
+                                    onClick={() => goTo(targetPath)}
+                                    selected={isActive}
+                                    sx={{
+                                        borderRadius: 2,
+                                        minHeight: 48,
+                                        color: isActive ? 'primary.main' : 'text.secondary',
+                                        borderLeft: isActive ? '3px solid' : '3px solid transparent',
+                                        borderColor: isActive ? 'primary.main' : 'transparent',
+                                        bgcolor: isActive
+                                            ? (theme) => alpha(theme.palette.primary.main, 0.08)
+                                            : 'transparent',
+                                        '&:hover': {
+                                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.06),
+                                            color: 'primary.main',
+                                        },
+                                        '&.Mui-selected': {
+                                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                                        },
+                                        '&.Mui-selected:hover': {
+                                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
+                                        },
+                                    }}
+                                >
+                                    <ListItemIcon
+                                        sx={{
+                                            minWidth: 36,
+                                            color: isActive ? 'primary.main' : 'text.secondary',
+                                        }}
+                                    >
+                                        {icon}
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary={page}
+                                        primaryTypographyProps={{
+                                            fontWeight: isActive ? 700 : 500,
+                                            fontSize: '0.9rem',
+                                        }}
+                                    />
+                                </ListItemButton>
+                            </ListItem>
+                        );
+                    })}
+                </List>
+
+                <Divider />
+
+                {/* Footer: Theme toggle + Logout */}
+                <Box sx={{ p: 1.5, display: 'flex', gap: 1 }}>
+                    <ListItemButton
+                        onClick={toggleColorMode}
+                        sx={{ borderRadius: 2, flex: 1, minHeight: 44, gap: 1 }}
+                    >
+                        <ListItemIcon sx={{ minWidth: 'auto', color: 'text.secondary' }}>
+                            {isDark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+                        </ListItemIcon>
+                        <ListItemText
+                            primary={isDark ? 'Light Mode' : 'Dark Mode'}
+                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: 500, color: 'text.secondary' }}
+                        />
+                    </ListItemButton>
+
+                    <ListItemButton
+                        onClick={() => goTo('/logout')}
+                        sx={{
+                            borderRadius: 2,
+                            flex: 1,
+                            minHeight: 44,
+                            gap: 1,
+                            color: 'error.main',
+                            '&:hover': { bgcolor: (theme) => alpha(theme.palette.error.main, 0.08) },
+                        }}
+                    >
+                        <ListItemIcon sx={{ minWidth: 'auto', color: 'error.main' }}>
+                            <LogoutIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary="Log out"
+                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: 600, color: 'error.main' }}
+                        />
+                    </ListItemButton>
+                </Box>
+            </Drawer>
         </>
     );
 }

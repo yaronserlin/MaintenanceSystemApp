@@ -13,7 +13,6 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
     IconButton,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -93,7 +92,7 @@ export default function EquipmentsPage() {
     }
 
     if (loading) {
-        return <LoadingComponent />;
+        return <LoadingComponent message="Loading equipment fleet..." />;
     }
 
     const faultyCount = Object.keys(openFaultsByTool).length;
@@ -108,24 +107,24 @@ export default function EquipmentsPage() {
                 alignItems={{ xs: 'flex-start', sm: 'center' }}
                 flexDirection={{ xs: 'column', sm: 'row' }}
                 gap={2}
-                mb={3}
+                mb={3.5}
             >
                 <Box>
-                    <Typography variant="h4" fontWeight={700}>
+                    <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">
                         Equipment Fleet
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Manage machinery, service logs, operating hours, and manuals
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        Manage machinery, operating hours, maintenance logs, and service manuals
                     </Typography>
                 </Box>
 
                 {isAdmin && (
                     <Button
                         variant="contained"
-                        color="secondary"
+                        color="primary"
                         startIcon={<AddIcon />}
                         onClick={() => setCreateDialogOpen(true)}
-                        sx={{ fontWeight: 700 }}
+                        sx={{ fontWeight: 700, minHeight: 44 }}
                     >
                         Add Equipment
                     </Button>
@@ -141,7 +140,7 @@ export default function EquipmentsPage() {
                 gap={2}
                 mb={3}
             >
-                <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
+                <Box display="flex" gap={1.5} alignItems="center" flexWrap="wrap" sx={{ width: { xs: '100%', md: 'auto' } }}>
                     <TextField
                         size="small"
                         placeholder="Search equipment, serial, model..."
@@ -154,33 +153,33 @@ export default function EquipmentsPage() {
                                 </InputAdornment>
                             ),
                         }}
-                        sx={{ width: { xs: '100%', sm: 280 } }}
+                        sx={{ width: { xs: '100%', sm: 260 } }}
                     />
 
-                    <Box display="flex" gap={0.5}>
+                    <Box display="flex" gap={0.75} flexWrap="wrap">
                         <Chip
                             label={`All (${equipment?.length || 0})`}
                             size="small"
                             variant={statusFilter === 'all' ? 'filled' : 'outlined'}
-                            color="primary"
+                            color={statusFilter === 'all' ? 'primary' : 'default'}
                             onClick={() => setStatusFilter('all')}
-                            sx={{ fontWeight: 600 }}
+                            sx={{ fontWeight: 600, cursor: 'pointer' }}
                         />
                         <Chip
                             label={`Operational (${operationalCount})`}
                             size="small"
                             variant={statusFilter === 'operational' ? 'filled' : 'outlined'}
-                            color="success"
+                            color={statusFilter === 'operational' ? 'success' : 'default'}
                             onClick={() => setStatusFilter('operational')}
-                            sx={{ fontWeight: 600 }}
+                            sx={{ fontWeight: 600, cursor: 'pointer' }}
                         />
                         <Chip
                             label={`Needs Attention (${faultyCount})`}
                             size="small"
                             variant={statusFilter === 'faults' ? 'filled' : 'outlined'}
-                            color="error"
+                            color={statusFilter === 'faults' ? 'error' : 'default'}
                             onClick={() => setStatusFilter('faults')}
-                            sx={{ fontWeight: 600 }}
+                            sx={{ fontWeight: 600, cursor: 'pointer' }}
                         />
                     </Box>
                 </Box>
@@ -215,13 +214,13 @@ export default function EquipmentsPage() {
                 maxWidth="sm"
                 fullWidth
             >
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight="bold">Register New Equipment</Typography>
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                    <Typography variant="h6" fontWeight={700}>Register New Equipment</Typography>
                     <IconButton size="small" onClick={() => setCreateDialogOpen(false)}>
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent dividers>
+                <DialogContent dividers sx={{ pt: 2 }}>
                     <CreateToolForm onSubmit={handleCreateSubmit} />
                 </DialogContent>
             </Dialog>
