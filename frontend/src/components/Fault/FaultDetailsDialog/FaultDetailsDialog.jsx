@@ -21,6 +21,7 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { getMediaUrl } from '../../../utils/mediaUtils';
+import { formatUserName } from '../../../utils/formatUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
 
@@ -122,7 +123,7 @@ export default function FaultDetailsDialog({
                             <ListItem disableGutters>
                                 <ListItemText
                                     primary="Reported By"
-                                    secondary={fault.operator?.name || fault.operator || 'N/A'}
+                                    secondary={formatUserName(fault.operator?.name) || fault.operator?.name || fault.operator || 'N/A'}
                                 />
                             </ListItem>
 
@@ -147,7 +148,7 @@ export default function FaultDetailsDialog({
                                         <ListItem disableGutters>
                                             <ListItemText
                                                 primary="Resolved By"
-                                                secondary={fault.resolvedBy?.name || fault.resolvedBy?.email || fault.resolvedBy || 'Technician'}
+                                                secondary={formatUserName(fault.resolvedBy?.name) || fault.resolvedBy?.name || fault.resolvedBy?.email || fault.resolvedBy || 'Technician'}
                                             />
                                         </ListItem>
                                     )}

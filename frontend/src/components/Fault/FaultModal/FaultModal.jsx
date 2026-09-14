@@ -10,6 +10,7 @@ import SpeedIcon from '@mui/icons-material/Speed';
 import ReplayIcon from '@mui/icons-material/Replay';
 import CloseIcon from '@mui/icons-material/Close';
 import { getMediaUrl } from '../../../utils/mediaUtils';
+import { formatUserName } from '../../../utils/formatUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
 
@@ -155,7 +156,7 @@ export default function FaultModal({
                                 </Typography>
                                 {fault.resolvedBy && (
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                                        Resolved by: {fault.resolvedBy?.name || fault.resolvedBy?.email || fault.resolvedBy}
+                                        Resolved by: {formatUserName(fault.resolvedBy?.name) || fault.resolvedBy?.name || fault.resolvedBy?.email || fault.resolvedBy}
                                     </Typography>
                                 )}
                             </Box>

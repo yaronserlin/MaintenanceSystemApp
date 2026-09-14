@@ -40,6 +40,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotify } from '../contexts/NotificationContext';
 import { useEquipment } from '../contexts/EquipmentContext';
 import { useFault } from '../contexts/FaultContext';
+import { formatUserName } from '../utils/formatUtils';
 import apiClient from '../services/apiClient';
 import equipmentService from '../services/equipmentService';
 import faultService from '../services/faultsService';
@@ -587,7 +588,7 @@ export default function Dashboard() {
             >
                 <Box>
                     <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">
-                        Welcome back, {user?.name || 'Technician'}
+                        Welcome back, {formatUserName(user?.name) || 'Technician'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                         Operations & Equipment Maintenance Dashboard

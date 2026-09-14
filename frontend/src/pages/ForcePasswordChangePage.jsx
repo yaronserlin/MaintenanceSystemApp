@@ -20,6 +20,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
+import { formatUserName } from '../utils/formatUtils';
 
 export default function ForcePasswordChangePage() {
     const { user, setUser, logout } = useAuth();
@@ -106,7 +107,7 @@ export default function ForcePasswordChangePage() {
                         Set Your Password
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Welcome{user?.name ? `, ${user.name}` : ''}! As a security precaution, please set a new personal password before accessing your account.
+                        Welcome{user?.name ? `, ${formatUserName(user.name)}` : ''}! As a security precaution, please set a new personal password before accessing your account.
                     </Typography>
 
                     {error && (

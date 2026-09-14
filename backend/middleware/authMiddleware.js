@@ -7,6 +7,8 @@ exports.verifyToken = async (req, res, next) => {
 
     if (req.cookies && req.cookies.token) {
         token = req.cookies.token;
+    } else if (req.cookies && req.cookies.accessToken) {
+        token = req.cookies.accessToken;
     } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
         token = req.headers.authorization.split(' ')[1];
     }
@@ -57,6 +59,9 @@ exports.verifyToken = async (req, res, next) => {
 
         next();
     } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ message: 'Token expired', code: 'TOKEN_EXPIRED' });
+        }
         return res.status(401).json({ message: 'Invalid or expired token' });
     }
 };

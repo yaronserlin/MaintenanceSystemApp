@@ -1,14 +1,74 @@
 // controllers/authController.js
+const crypto = require('crypto');
 const User = require('../models/User');
 const Company = require('../models/Company');
+const RefreshToken = require('../models/RefreshToken');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const COOKIE_OPTIONS = {
+const ACCESS_TOKEN_EXPIRY = '15m';
+const REFRESH_TOKEN_EXPIRY = '7d';
+const ACCESS_COOKIE_MAX_AGE = 15 * 60 * 1000; // 15 minutes
+const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || `${process.env.JWT_SECRET}_refresh`;
+
+const getCookieOptions = (maxAge, path = '/') => ({
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge,
+    path,
+});
+
+const hashToken = (token) => {
+    return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+const generateTokens = async (user, companyId, familyId = null) => {
+    const userIdStr = user._id.toString();
+    const companyIdStr = companyId.toString();
+
+    const accessToken = jwt.sign(
+        { userId: userIdStr, role: user.role, companyId: companyIdStr },
+        process.env.JWT_SECRET,
+        { expiresIn: ACCESS_TOKEN_EXPIRY, algorithm: 'HS256' }
+    );
+
+    const activeFamilyId = familyId || crypto.randomUUID();
+
+    const refreshToken = jwt.sign(
+        { userId: userIdStr, familyId: activeFamilyId, jti: crypto.randomUUID() },
+        getRefreshSecret(),
+        { expiresIn: REFRESH_TOKEN_EXPIRY, algorithm: 'HS256' }
+    );
+
+    const expiresAt = new Date(Date.now() + REFRESH_COOKIE_MAX_AGE);
+    await RefreshToken.create({
+        userId: user._id,
+        companyId,
+        tokenHash: hashToken(refreshToken),
+        familyId: activeFamilyId,
+        expiresAt,
+    });
+
+    return {
+        accessToken,
+        token: accessToken,
+        refreshToken,
+    };
+};
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+    res.cookie('token', accessToken, getCookieOptions(ACCESS_COOKIE_MAX_AGE, '/'));
+    res.cookie('accessToken', accessToken, getCookieOptions(ACCESS_COOKIE_MAX_AGE, '/'));
+    res.cookie('refreshToken', refreshToken, getCookieOptions(REFRESH_COOKIE_MAX_AGE, '/api/auth'));
+};
+
+const clearAuthCookies = (res) => {
+    res.clearCookie('token', getCookieOptions(0, '/'));
+    res.clearCookie('accessToken', getCookieOptions(0, '/'));
+    res.clearCookie('refreshToken', getCookieOptions(0, '/api/auth'));
 };
 
 const generateSlug = (name) => {
@@ -73,17 +133,14 @@ exports.register = async (req, res, next) => {
                 companyId: company._id,
             });
 
-            const token = jwt.sign(
-                { userId: user._id.toString(), role: user.role, companyId: company._id.toString() },
-                process.env.JWT_SECRET,
-                { expiresIn: '1d', algorithm: 'HS256' }
-            );
-
-            res.cookie('token', token, COOKIE_OPTIONS);
+            const tokens = await generateTokens(user, company._id);
+            setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
             return res.status(201).json({
                 message: 'Company and admin account created successfully',
-                token,
+                accessToken: tokens.accessToken,
+                token: tokens.token,
+                refreshToken: tokens.refreshToken,
                 user: {
                     id: user._id,
                     _id: user._id,
@@ -135,16 +192,13 @@ exports.login = async (req, res, next) => {
             return res.status(403).json({ message: 'Company account is inactive' });
         }
 
-        const token = jwt.sign(
-            { userId: user._id.toString(), role: user.role, companyId: user.companyId._id.toString() },
-            process.env.JWT_SECRET,
-            { expiresIn: '1d', algorithm: 'HS256' }
-        );
-
-        res.cookie('token', token, COOKIE_OPTIONS);
+        const tokens = await generateTokens(user, user.companyId._id);
+        setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
         return res.json({
-            token,
+            accessToken: tokens.accessToken,
+            token: tokens.token,
+            refreshToken: tokens.refreshToken,
             user: {
                 id: user._id,
                 _id: user._id,
@@ -166,10 +220,83 @@ exports.login = async (req, res, next) => {
     }
 };
 
+// Refresh Token with Rotation & Reuse Detection
+exports.refreshToken = async (req, res, next) => {
+    try {
+        const rawRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+
+        if (!rawRefreshToken || typeof rawRefreshToken !== 'string') {
+            return res.status(401).json({ message: 'Refresh token is required' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(rawRefreshToken, getRefreshSecret(), { algorithms: ['HS256'] });
+        } catch (err) {
+            return res.status(401).json({ message: 'Invalid or expired refresh token' });
+        }
+
+        const hashed = hashToken(rawRefreshToken);
+        const existingTokenDoc = await RefreshToken.findOne({ tokenHash: hashed });
+
+        if (!existingTokenDoc) {
+            return res.status(401).json({ message: 'Refresh token not recognized' });
+        }
+
+        // Reuse detection: if this token was already revoked, someone is reusing an old token!
+        if (existingTokenDoc.isRevoked) {
+            // Revoke all tokens in this family lineage
+            await RefreshToken.updateMany(
+                { familyId: existingTokenDoc.familyId },
+                { isRevoked: true }
+            );
+            clearAuthCookies(res);
+            return res.status(403).json({
+                message: 'Compromised token detected: all sessions in this family have been revoked',
+                code: 'TOKEN_REUSE_DETECTED',
+            });
+        }
+
+        // Verify user and company are still valid and active
+        const user = await User.findById(decoded.userId).populate('companyId');
+        if (!user) {
+            return res.status(401).json({ message: 'User not found or deleted' });
+        }
+        if (!user.companyId || !user.companyId.isActive) {
+            return res.status(403).json({ message: 'Company account is inactive or not found' });
+        }
+
+        // Invalidate current refresh token (RTR rotation)
+        existingTokenDoc.isRevoked = true;
+        await existingTokenDoc.save();
+
+        // Issue new access token + new rotated refresh token under the same familyId
+        const tokens = await generateTokens(user, user.companyId._id, existingTokenDoc.familyId);
+        setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
+        return res.json({
+            accessToken: tokens.accessToken,
+            token: tokens.token,
+            refreshToken: tokens.refreshToken,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 // Logout
-exports.logout = (req, res) => {
-    res.clearCookie('token', COOKIE_OPTIONS);
-    res.json({ message: 'Logged out successfully' });
+exports.logout = async (req, res, next) => {
+    try {
+        const rawRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+        if (rawRefreshToken && typeof rawRefreshToken === 'string') {
+            const hashed = hashToken(rawRefreshToken);
+            await RefreshToken.updateOne({ tokenHash: hashed }, { isRevoked: true });
+        }
+        clearAuthCookies(res);
+        return res.json({ message: 'Logged out successfully' });
+    } catch (err) {
+        next(err);
+    }
 };
 
 // Current authenticated user profile
@@ -307,6 +434,9 @@ exports.changePassword = async (req, res, next) => {
         user.password = await bcrypt.hash(newPassword, 10);
         user.mustChangePassword = false;
         await user.save();
+
+        // Invalidate all active refresh tokens for this user across all sessions
+        await RefreshToken.updateMany({ userId: user._id }, { isRevoked: true });
 
         res.json({ message: 'Password changed successfully', mustChangePassword: false });
     } catch (err) {

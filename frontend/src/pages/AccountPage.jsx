@@ -22,6 +22,7 @@ import { styled } from '@mui/material/styles';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
 import { getMediaUrl } from '../utils/mediaUtils';
+import { formatUserName, getUserInitials } from '../utils/formatUtils';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -58,7 +59,7 @@ export default function AccountPage() {
     const [showEmailPassword, setShowEmailPassword] = useState(false);
 
     useEffect(() => {
-        if (user) setForm({ name: user.name || '', email: user.email || '' });
+        if (user) setForm({ name: formatUserName(user.name) || '', email: user.email || '' });
     }, [user]);
 
     const handleChange = e => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -106,11 +107,14 @@ export default function AccountPage() {
         setProfileMsg(null);
         setProfileError(null);
         try {
+            const formattedName = formatUserName(form.name);
             const { data } = await apiClient.put('/auth/me', {
                 ...form,
+                name: formattedName,
                 currentPassword: isEmailChanged ? emailPassword : undefined,
             });
-            setUser(prev => ({ ...prev, ...data }));
+            setUser(prev => ({ ...prev, ...data, name: formattedName }));
+            setForm(prev => ({ ...prev, name: formattedName }));
             setProfileMsg('Profile updated successfully');
             setEmailPassword('');
         } catch (err) {
@@ -183,7 +187,7 @@ export default function AccountPage() {
                 <Box position="relative">
                     <Avatar
                         src={getMediaUrl(user?.avatar)}
-                        alt={user?.name}
+                        alt={formatUserName(user?.name) || 'User'}
                         sx={{
                             width: 80,
                             height: 80,
@@ -193,7 +197,7 @@ export default function AccountPage() {
                             color: 'primary.contrastText',
                         }}
                     >
-                        {user?.name?.charAt(0) || 'U'}
+                        {getUserInitials(user?.name)}
                     </Avatar>
                     {avatarLoading && (
                         <CircularProgress

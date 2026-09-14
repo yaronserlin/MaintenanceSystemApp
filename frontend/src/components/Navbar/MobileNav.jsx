@@ -29,7 +29,9 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 import { getMediaUrl } from '../../utils/mediaUtils';
+import { formatUserName, getUserInitials } from '../../utils/formatUtils';
 import { useThemeMode } from '../../contexts/ThemeContext';
+import Logo from '../Logo/Logo';
 
 const DRAWER_WIDTH = 280;
 
@@ -97,40 +99,13 @@ export default function MobileNav({ display, user, pages }) {
             </Box>
 
             {/* ── Brand Logo (mobile center) ─────────────────── */}
-            <Box
-                component={RouterLink}
-                to="/dashboard"
-                sx={{
-                    display,
-                    alignItems: 'center',
-                    gap: 1,
-                    flexGrow: 1,
-                    textDecoration: 'none',
-                    color: 'text.primary',
-                }}
-            >
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 30,
-                        height: 30,
-                        borderRadius: 1.5,
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText',
-                        flexShrink: 0,
-                    }}
-                >
-                    <BuildCircleIcon sx={{ fontSize: 17 }} />
-                </Box>
-                <Typography
-                    variant="subtitle2"
-                    noWrap
-                    sx={{ fontWeight: 800, letterSpacing: '-0.01em', color: 'text.primary' }}
-                >
-                    MAINTENANCE
-                </Typography>
+            <Box sx={{ display, flexGrow: 1, alignItems: 'center' }}>
+                <Logo
+                    size={30}
+                    variant="full"
+                    subtitle=""
+                    to="/dashboard"
+                />
             </Box>
 
             {/* ── Drawer ─────────────────────────────────────── */}
@@ -158,30 +133,11 @@ export default function MobileNav({ display, user, pages }) {
                         minHeight: 64,
                     }}
                 >
-                    <Box display="flex" alignItems="center" gap={1.5}>
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 32,
-                                height: 32,
-                                borderRadius: 1.5,
-                                bgcolor: 'primary.main',
-                                color: 'primary.contrastText',
-                            }}
-                        >
-                            <BuildCircleIcon sx={{ fontSize: 18 }} />
-                        </Box>
-                        <Box>
-                            <Typography variant="subtitle2" fontWeight={800} letterSpacing="-0.01em">
-                                MAINTENANCE
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1 }}>
-                                {user?.role === 'operator' ? 'Operator Portal' : 'Ops Manager'}
-                            </Typography>
-                        </Box>
-                    </Box>
+                    <Logo
+                        size={32}
+                        subtitle={user?.role === 'operator' ? 'Operator Portal' : 'Ops Manager'}
+                        to="/dashboard"
+                    />
                     <IconButton size="small" onClick={handleClose} aria-label="Close navigation menu">
                         <CloseIcon fontSize="small" />
                     </IconButton>
@@ -192,7 +148,7 @@ export default function MobileNav({ display, user, pages }) {
                     <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Avatar
                             src={avatarSrc}
-                            alt={user.name}
+                            alt={formatUserName(user.name)}
                             sx={{
                                 width: 40,
                                 height: 40,
@@ -201,11 +157,11 @@ export default function MobileNav({ display, user, pages }) {
                                 fontWeight: 700,
                             }}
                         >
-                            {user.name?.charAt(0)?.toUpperCase()}
+                            {getUserInitials(user.name)}
                         </Avatar>
                         <Box sx={{ minWidth: 0 }}>
                             <Typography variant="body2" fontWeight={700} noWrap>
-                                {user.name}
+                                {formatUserName(user.name)}
                             </Typography>
                             <Chip
                                 label={ROLE_LABEL[user.role] || user.role}

@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../services/apiClient';
+import { formatUserName } from '../utils/formatUtils';
+
+const sanitizeUser = (userData) => {
+    if (!userData || typeof userData !== 'object') return userData;
+    return {
+        ...userData,
+        name: formatUserName(userData.name),
+    };
+};
 
 const AuthContext = createContext();
 
@@ -16,10 +25,12 @@ export const AuthProvider = ({ children }) => {
         apiClient.get('/auth/me')
             .then(res => {
                 if (isMounted) {
-                    setUser(res.data);
-                    setUserId(res.data.id || res.data._id);
+                    const formatted = sanitizeUser(res.data);
+                    setUser(formatted);
+                    setUserId(formatted.id || formatted._id);
                 }
             })
+
             .catch(() => {
                 if (isMounted) {
                     apiClient.setToken(null);
@@ -48,17 +59,19 @@ export const AuthProvider = ({ children }) => {
                 : maybePassword;
 
             const { data } = await apiClient.post('/auth/login', { email, password });
-            if (data.token) {
-                apiClient.setToken(data.token);
+            const token = data.accessToken || data.token;
+            if (token) {
+                apiClient.setToken(token);
             }
-            setUser(data.user);
-            setUserId(data.user.id || data.user._id);
-            if (data.user?.mustChangePassword) {
+            const formattedUser = sanitizeUser(data.user);
+            setUser(formattedUser);
+            setUserId(formattedUser?.id || formattedUser?._id);
+            if (formattedUser?.mustChangePassword) {
                 navigate('/force-password-change', { replace: true });
             } else {
                 navigate('/dashboard');
             }
-            return data.user;
+            return formattedUser;
         } catch (error) {
             if (error.response && error.response.data) {
                 throw new Error(error.response.data.message || 'Login failed, please check your credentials');
@@ -76,21 +89,23 @@ export const AuthProvider = ({ children }) => {
         try {
             const { data } = await apiClient.post('/auth/register', {
                 companyName,
-                name,
+                name: formatUserName(name),
                 email,
                 password,
             });
-            if (data.token) {
-                apiClient.setToken(data.token);
+            const token = data.accessToken || data.token;
+            if (token) {
+                apiClient.setToken(token);
             }
-            setUser(data.user);
-            setUserId(data.user.id || data.user._id);
-            if (data.user?.mustChangePassword) {
+            const formattedUser = sanitizeUser(data.user);
+            setUser(formattedUser);
+            setUserId(formattedUser?.id || formattedUser?._id);
+            if (formattedUser?.mustChangePassword) {
                 navigate('/force-password-change', { replace: true });
             } else {
                 navigate('/dashboard');
             }
-            return data.user;
+            return formattedUser;
         } catch (error) {
             if (error.response && error.response.data) {
                 throw new Error(error.response.data.message || 'Signup failed, please try again');
@@ -123,12 +138,20 @@ export const AuthProvider = ({ children }) => {
         const { data } = await apiClient.post('/auth/me/avatar', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setUser(data);
-        return data;
+        const formattedUser = sanitizeUser(data);
+        setUser(formattedUser);
+        return formattedUser;
+    };
+
+    const handleSetUser = (newUserData) => {
+        setUser(prev => {
+            const nextVal = typeof newUserData === 'function' ? newUserData(prev) : newUserData;
+            return sanitizeUser(nextVal);
+        });
     };
 
     return (
-        <AuthContext.Provider value={{ user, setUser, userId, loading, login, signup, logout, updateAvatar }}>
+        <AuthContext.Provider value={{ user, setUser: handleSetUser, userId, loading, login, signup, logout, updateAvatar }}>
             {children}
         </AuthContext.Provider>
     );

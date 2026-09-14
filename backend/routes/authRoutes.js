@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const {
     register,
     login,
+    refreshToken,
     logout,
     me,
     updateProfile,
@@ -26,6 +27,7 @@ const authLimiter = rateLimit({
 // Public routes with rate limiting
 router.post('/register', authLimiter, register);
 router.post('/login', authLimiter, login);
+router.post('/refresh', authLimiter, refreshToken);
 router.post('/logout', logout);
 
 // Protected routes

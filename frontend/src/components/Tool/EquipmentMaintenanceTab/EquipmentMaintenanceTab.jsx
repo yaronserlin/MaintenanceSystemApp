@@ -36,6 +36,7 @@ import { useNotify } from '../../../contexts/NotificationContext';
 import equipmentService from '../../../services/equipmentService';
 import maintenanceService from '../../../services/maintenanceService';
 import ConfirmDialog from '../../ConfirmDialog/ConfirmDialog';
+import { formatUserName } from '../../../utils/formatUtils';
 
 export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) {
     const eq = equipment || tool;
@@ -468,7 +469,7 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
                                             <Chip
                                                 size="small"
                                                 icon={<PersonIcon fontSize="small" />}
-                                                label={log.mechanic.name || 'Mechanic'}
+                                                label={formatUserName(log.mechanic.name) || log.mechanic.name || 'Mechanic'}
                                                 variant="outlined"
                                             />
                                         )}
