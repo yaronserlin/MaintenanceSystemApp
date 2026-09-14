@@ -1,6 +1,13 @@
-/* Global base styling */
+/* ============================================================
+   Global base styling — Maintenance System App
+   ============================================================ */
+
 *, *::before, *::after {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html, body {
@@ -10,12 +17,23 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* Custom modern scrollbars */
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Custom modern scrollbars ── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -28,16 +46,37 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+  background: rgba(148, 163, 184, 0.7);
 }
 
-/* Smooth focus visible rings */
+/* ── Brand focus ring (blue, accessible) ── */
 :focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid #2563EB;
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* Fix iOS tap highlight */
+/* ── Cursor pointer on all interactives ── */
+a,
+button,
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+label[for] {
+  cursor: pointer;
+}
+
+/* ── Smooth iOS tap highlight removal ── */
 a, button, [role="button"] {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* ── App root page fade-in ── */
+#root {
+  animation: appFadeIn 0.18s ease-out;
+}
+
+@keyframes appFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

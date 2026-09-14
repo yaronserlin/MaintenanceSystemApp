@@ -18,6 +18,7 @@ import {
     TableContainer,
     Paper,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import SpeedIcon from '@mui/icons-material/Speed';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -38,17 +39,17 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
             <Paper
                 variant="outlined"
                 sx={{
-                    p: 5,
+                    p: { xs: 4, sm: 6 },
                     textAlign: 'center',
                     bgcolor: 'background.paper',
                     borderRadius: 3,
                 }}
             >
-                <PrecisionManufacturingIcon sx={{ fontSize: 52, color: 'text.secondary', mb: 1.5 }} />
-                <Typography variant="h6" fontWeight={600}>
+                <PrecisionManufacturingIcon sx={{ fontSize: 56, color: 'text.secondary', mb: 1.5, opacity: 0.7 }} />
+                <Typography variant="h6" fontWeight={700} gutterBottom>
                     No equipment found
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
                     Try adjusting your search query or filters.
                 </Typography>
             </Paper>
@@ -57,17 +58,17 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
 
     if (viewMode === 'table') {
         return (
-            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
                 <Table size="small">
-                    <TableHead>
+                    <TableHead sx={{ bgcolor: 'background.subtle' }}>
                         <TableRow>
-                            <TableCell>ID / Unit</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Model</TableCell>
-                            <TableCell>Serial Number</TableCell>
-                            <TableCell>Engine Hours</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell align="right">Actions</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ID / Unit</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Name</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Model</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Serial Number</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Engine Hours</TableCell>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -79,16 +80,19 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                 <TableRow
                                     key={tool._id}
                                     hover
-                                    sx={{ cursor: 'pointer' }}
+                                    sx={{
+                                        cursor: 'pointer',
+                                        '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04) },
+                                    }}
                                     onClick={() => navigate(`/equipment/${tool._id}`)}
                                 >
                                     <TableCell>
-                                        <Typography variant="subtitle2" fontWeight="bold">
+                                        <Typography variant="subtitle2" fontWeight={700}>
                                             {tool.localSerialNumber || '—'}
                                         </Typography>
                                     </TableCell>
                                     <TableCell>
-                                        <Typography variant="body2" fontWeight="medium">
+                                        <Typography variant="body2" fontWeight={600}>
                                             {tool.name}
                                         </Typography>
                                     </TableCell>
@@ -101,26 +105,31 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                                 label={`${tool.currentEngineHours} hrs`}
                                                 size="small"
                                                 variant="outlined"
+                                                color="primary"
+                                                sx={{ height: 22, fontSize: '0.72rem', fontWeight: 600 }}
                                             />
                                         ) : '—'}
                                     </TableCell>
                                     <TableCell>
                                         <Chip
                                             icon={hasOpenFaults ? <WarningAmberIcon /> : <CheckCircleIcon />}
-                                            label={hasOpenFaults ? `${openFaultCount} Fault${openFaultCount > 1 ? 's' : ''}` : 'Operational'}
+                                            label={hasOpenFaults ? `${openFaultCount} Fault${openFaultCount > 1 ? 's' : ''}` : 'Ready'}
                                             size="small"
                                             color={hasOpenFaults ? 'error' : 'success'}
-                                            sx={{ fontWeight: 600 }}
+                                            sx={{ fontWeight: 700, fontSize: '0.72rem' }}
                                         />
                                     </TableCell>
                                     <TableCell align="right">
                                         <Button
                                             size="small"
+                                            variant="text"
+                                            color="primary"
                                             endIcon={<ChevronRightIcon />}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 navigate(`/equipment/${tool._id}`);
                                             }}
+                                            sx={{ fontWeight: 700 }}
                                         >
                                             Details
                                         </Button>
@@ -150,12 +159,14 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                 display: 'flex',
                                 flexDirection: 'column',
                                 height: '100%',
+                                borderLeft: hasOpenFaults ? '4px solid #DC2626' : '4px solid #16A34A',
+                                borderRadius: '12px',
                                 transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                                 '&:hover': {
                                     transform: 'translateY(-2px)',
                                     boxShadow: (theme) => theme.palette.mode === 'dark'
-                                        ? '0 6px 16px rgba(0,0,0,0.5)'
-                                        : '0 6px 16px rgba(0,0,0,0.08)',
+                                        ? `0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px ${hasOpenFaults ? '#DC262630' : '#16A34A30'}`
+                                        : `0 8px 24px ${hasOpenFaults ? 'rgba(220,38,38,0.12)' : 'rgba(22,163,74,0.10)'}`,
                                 },
                             }}
                         >
@@ -166,27 +177,30 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                 <CardContent sx={{ pb: 1 }}>
                                     {/* Header with Unit Badge & Status */}
                                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1} mb={1.5}>
-                                        <Box display="flex" alignItems="center" gap={1}>
+                                        <Box display="flex" alignItems="center" gap={1.25}>
                                             <Box
                                                 sx={{
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    width: 40,
-                                                    height: 40,
+                                                    width: 42,
+                                                    height: 42,
                                                     borderRadius: 2,
-                                                    bgcolor: 'primary.main',
-                                                    color: 'primary.contrastText',
+                                                    bgcolor: hasOpenFaults
+                                                        ? alpha('#DC2626', 0.12)
+                                                        : alpha('#16A34A', 0.12),
+                                                    color: hasOpenFaults ? '#DC2626' : '#16A34A',
+                                                    flexShrink: 0,
                                                 }}
                                             >
-                                                <PrecisionManufacturingIcon fontSize="small" />
+                                                <PrecisionManufacturingIcon fontSize="medium" />
                                             </Box>
                                             <Box>
-                                                <Typography variant="h6" fontWeight="bold" lineHeight={1.2}>
+                                                <Typography variant="h6" fontWeight={700} lineHeight={1.2}>
                                                     {tool.name}
                                                 </Typography>
                                                 {tool.localSerialNumber && (
-                                                    <Typography variant="caption" color="secondary.main" fontWeight={700}>
+                                                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
                                                         UNIT: {tool.localSerialNumber}
                                                     </Typography>
                                                 )}
@@ -194,22 +208,22 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                         </Box>
 
                                         <Chip
-                                            icon={hasOpenFaults ? <WarningAmberIcon /> : <CheckCircleIcon />}
+                                            icon={hasOpenFaults ? <WarningAmberIcon sx={{ fontSize: '0.9rem !important' }} /> : <CheckCircleIcon sx={{ fontSize: '0.9rem !important' }} />}
                                             label={hasOpenFaults ? `${openFaultCount} Fault${openFaultCount > 1 ? 's' : ''}` : 'Ready'}
                                             size="small"
                                             color={hasOpenFaults ? 'error' : 'success'}
-                                            sx={{ fontWeight: 600 }}
+                                            sx={{ fontWeight: 700, fontSize: '0.72rem' }}
                                         />
                                     </Box>
 
                                     {/* Specs & Info */}
-                                    <Box display="flex" flexWrap="wrap" gap={1} mb={1.5}>
+                                    <Box display="flex" flexWrap="wrap" gap={0.75} mb={1.5}>
                                         {tool.model && (
                                             <Chip
                                                 label={`Model: ${tool.model}`}
                                                 size="small"
                                                 variant="outlined"
-                                                sx={{ fontSize: '0.75rem' }}
+                                                sx={{ fontSize: '0.72rem', height: 22 }}
                                             />
                                         )}
                                         {tool.serialNumber && (
@@ -217,7 +231,7 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                                 label={`S/N: ${tool.serialNumber}`}
                                                 size="small"
                                                 variant="outlined"
-                                                sx={{ fontSize: '0.75rem' }}
+                                                sx={{ fontSize: '0.72rem', height: 22 }}
                                             />
                                         )}
                                         {tool.currentEngineHours !== undefined && (
@@ -226,8 +240,8 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                                 label={`${tool.currentEngineHours} hrs`}
                                                 size="small"
                                                 variant="outlined"
-                                                color="secondary"
-                                                sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                                                color="primary"
+                                                sx={{ fontSize: '0.72rem', height: 22, fontWeight: 600 }}
                                             />
                                         )}
                                     </Box>
@@ -241,7 +255,8 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                                 WebkitLineClamp: 2,
                                                 WebkitBoxOrient: 'vertical',
                                                 overflow: 'hidden',
-                                                minHeight: 40,
+                                                minHeight: 38,
+                                                lineHeight: 1.45,
                                             }}
                                         >
                                             {tool.description}
@@ -255,7 +270,7 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                 sx={{
                                     justifyContent: 'space-between',
                                     px: 2,
-                                    py: 1.5,
+                                    py: 1.25,
                                     borderTop: '1px solid',
                                     borderColor: 'divider',
                                     bgcolor: 'background.subtle',
@@ -264,13 +279,13 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                 <Box display="flex" gap={1.5} alignItems="center">
                                     <Box display="flex" alignItems="center" gap={0.5} title={`${schedulesCount} Maintenance Schedules`}>
                                         <BuildIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography variant="caption" color="text.secondary" fontWeight={500}>
                                             {schedulesCount}
                                         </Typography>
                                     </Box>
                                     <Box display="flex" alignItems="center" gap={0.5} title={`${booksCount} Manuals`}>
                                         <BookIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography variant="caption" color="text.secondary" fontWeight={500}>
                                             {booksCount}
                                         </Typography>
                                     </Box>
@@ -279,9 +294,10 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                 <Button
                                     size="small"
                                     variant="text"
+                                    color="primary"
                                     endIcon={<ChevronRightIcon />}
                                     onClick={() => navigate(`/equipment/${tool._id}`)}
-                                    sx={{ fontWeight: 600 }}
+                                    sx={{ fontWeight: 700 }}
                                 >
                                     Manage
                                 </Button>

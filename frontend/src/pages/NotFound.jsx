@@ -1,33 +1,72 @@
 import React from 'react';
-import { Typography, Container, Button } from '@mui/material';
+import { Typography, Container, Button, Box } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import BuildCircleIcon from '@mui/icons-material/BuildCircle';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 function NotFound() {
     return (
         <Container
+            maxWidth="sm"
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
-                minHeight: '70vh',
-                gap: 2,
-                p: 2,
+                minHeight: '75vh',
+                textAlign: 'center',
+                py: 6,
             }}
         >
-            <Typography variant="h1" component="h1" sx={{ fontWeight: '600', letterSpacing: '20px' }}>
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 72,
+                    height: 72,
+                    borderRadius: 3,
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    mb: 3,
+                }}
+            >
+                <BuildCircleIcon sx={{ fontSize: 42 }} />
+            </Box>
+
+            <Typography
+                variant="h1"
+                component="h1"
+                sx={{
+                    fontWeight: 900,
+                    letterSpacing: '-0.04em',
+                    fontSize: { xs: '5rem', sm: '7rem' },
+                    lineHeight: 1,
+                    color: 'text.primary',
+                    mb: 1,
+                }}
+            >
                 404
             </Typography>
-            <Typography variant="h5" component="div" color="text.secondary">
-                Page not found
+
+            <Typography variant="h5" fontWeight={700} color="text.primary" gutterBottom>
+                Page Not Found
             </Typography>
+
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mb: 4 }}>
+                The maintenance screen or equipment record you are looking for might have been moved, deleted, or does not exist.
+            </Typography>
+
             <Button
                 component={RouterLink}
-                to="/"
+                to="/dashboard"
                 variant="contained"
-                sx={{ mt: 2 }}
+                color="primary"
+                size="large"
+                endIcon={<ArrowForwardIcon />}
+                sx={{ minHeight: 48, px: 3.5, fontWeight: 700 }}
             >
-                Return to home
+                Back to Dashboard
             </Button>
         </Container>
     );

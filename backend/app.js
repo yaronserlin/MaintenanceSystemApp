@@ -32,13 +32,16 @@ if (process.env.NODE_ENV !== 'test') {
     connectDB();
 }
 
+const isProd = process.env.NODE_ENV === 'production';
+const devOrigins = isProd ? [] : ['http://localhost:5173', 'http://localhost:4173'];
+
 // Security headers
 app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            'frame-ancestors': ["'self'", 'http://localhost:5173', 'http://localhost:4173', process.env.FRONTEND_URL].filter(Boolean),
+            'frame-ancestors': ["'self'", ...devOrigins, process.env.FRONTEND_URL].filter(Boolean),
         },
     },
 }));
@@ -48,7 +51,7 @@ const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
 app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps, curl, postman) or matching origin
-        if (!origin || origin === allowedOrigin || origin === 'http://localhost:5173' || origin === 'http://localhost:4173') {
+        if (!origin || origin === allowedOrigin || devOrigins.includes(origin)) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));

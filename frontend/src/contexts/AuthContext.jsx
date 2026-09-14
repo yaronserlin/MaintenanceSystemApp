@@ -35,10 +35,17 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
-    // Login function
-    const login = async (email, password) => {
+    // Login function (supports both login(email, password) and login({ email, password }))
+    const login = async (emailOrCredentials, maybePassword) => {
         setLoading(true);
         try {
+            const email = (typeof emailOrCredentials === 'object' && emailOrCredentials !== null)
+                ? emailOrCredentials.email
+                : emailOrCredentials;
+            const password = (typeof emailOrCredentials === 'object' && emailOrCredentials !== null)
+                ? emailOrCredentials.password
+                : maybePassword;
+
             const { data } = await apiClient.post('/auth/login', { email, password });
             setUser(data.user);
             setUserId(data.user.id || data.user._id);

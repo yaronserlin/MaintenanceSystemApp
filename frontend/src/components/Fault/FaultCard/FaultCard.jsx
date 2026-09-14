@@ -1,18 +1,18 @@
+// src/components/Fault/FaultCard/FaultCard.jsx
 import React from 'react';
-import {
-    Card,
-    CardActionArea,
-    CardContent,
-    CardActions,
-    CardMedia,
-    Button,
-    Typography,
-    Box,
-    Chip,
-} from '@mui/material';
+import Card from '@mui/material/Card';
+import CardActionArea from '@mui/material/CardActionArea';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import CardMedia from '@mui/material/CardMedia';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import SpeedIcon from '@mui/icons-material/Speed';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import BuildIcon from '@mui/icons-material/Build';
 import { useAuth } from '../../../contexts/AuthContext';
 import { getMediaUrl } from '../../../utils/mediaUtils';
 import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
@@ -20,12 +20,22 @@ import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
 export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault, onDeleteFault }) {
     const { user } = useAuth();
     const [viewerOpen, setViewerOpen] = React.useState(false);
+
+    const isOpen   = fault.status !== 'closed';
     const hasPhoto = fault.photos && fault.photos.length > 0;
-    const hours = fault.status === 'closed' && fault.closingEngineHours !== undefined
+    const hours    = fault.status === 'closed' && fault.closingEngineHours !== undefined
         ? fault.closingEngineHours
         : fault.engineHours;
+    const equipmentName = fault.tool?.name || '';
 
-    const equipmentName = fault.tool?.name || (typeof fault.tool === 'string' ? '' : '');
+    const isMechOrAdmin = user && (user.role === 'admin' || user.role === 'mechanic');
+
+    // Status color tokens
+    const statusColor  = isOpen ? 'error' : 'success';
+    const borderColor  = isOpen ? '#DC2626' : '#16A34A';
+    const hoverShadow  = isOpen
+        ? 'rgba(220,38,38,0.12)'
+        : 'rgba(22,163,74,0.10)';
 
     return (
         <Card
@@ -34,15 +44,18 @@ export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault,
                 flexDirection: 'column',
                 height: '100%',
                 position: 'relative',
+                borderLeft: `4px solid ${borderColor}`,
+                borderRadius: '12px',
                 transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                 '&:hover': {
                     transform: 'translateY(-2px)',
                     boxShadow: (theme) => theme.palette.mode === 'dark'
-                        ? '0 6px 16px rgba(0,0,0,0.5)'
-                        : '0 6px 16px rgba(0,0,0,0.08)',
+                        ? `0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px ${borderColor}30`
+                        : `0 8px 24px ${hoverShadow}, 0 0 0 1px ${borderColor}20`,
                 },
             }}
         >
+            {/* Photo (if any) */}
             {hasPhoto && (
                 <CardMedia
                     component="img"
@@ -55,93 +68,128 @@ export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault,
                         transition: 'opacity 0.2s',
                         '&:hover': { opacity: 0.88 },
                     }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setViewerOpen(true);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setViewerOpen(true); }}
                     title="Click to view full photo"
                 />
             )}
-            <CardActionArea onClick={() => onClick(fault)} sx={{ flexGrow: 1 }}>
+
+            {/* Clickable content */}
+            <CardActionArea onClick={() => onClick?.(fault)} sx={{ flexGrow: 1 }}>
                 <CardContent sx={{ pb: 1 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                        <Typography variant="h6" fontWeight="bold">
+                    {/* Header: code + status */}
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.75}>
+                        <Typography variant="h6" fontWeight={700} sx={{ lineHeight: 1.2 }}>
                             {fault.code || 'Fault'}
                         </Typography>
                         <Chip
-                            icon={fault.status === 'closed' ? <CheckCircleIcon /> : <WarningAmberIcon />}
-                            label={fault.status === 'closed' ? 'Closed' : 'Open'}
+                            icon={isOpen
+                                ? <WarningAmberIcon sx={{ fontSize: '0.95rem !important' }} />
+                                : <CheckCircleIcon sx={{ fontSize: '0.95rem !important' }} />
+                            }
+                            label={isOpen ? 'Open' : 'Closed'}
                             size="small"
-                            color={fault.status === 'closed' ? 'success' : 'error'}
-                            sx={{ fontWeight: 600 }}
+                            color={statusColor}
+                            sx={{ fontWeight: 700, fontSize: '0.72rem' }}
                         />
                     </Box>
 
+                    {/* Equipment name */}
                     {equipmentName && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                            Equipment: {equipmentName}
-                        </Typography>
+                        <Box display="flex" alignItems="center" gap={0.5} mb={1}>
+                            <BuildIcon sx={{ fontSize: 13, color: 'text.disabled' }} />
+                            <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                fontWeight={600}
+                                sx={{ lineHeight: 1 }}
+                            >
+                                {equipmentName}
+                            </Typography>
+                        </Box>
                     )}
 
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: 38, lineHeight: 1.4 }}>
+                    {/* Description */}
+                    <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                            mb: 1.5,
+                            minHeight: 36,
+                            lineHeight: 1.5,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                        }}
+                    >
                         {fault.description}
                     </Typography>
 
-                    <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+                    {/* Engine hours + date */}
+                    <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={0.75}>
                         {hours !== undefined && (
                             <Chip
-                                icon={<SpeedIcon sx={{ fontSize: '1rem !important' }} />}
+                                icon={<SpeedIcon sx={{ fontSize: '0.9rem !important', color: 'primary.main' }} />}
                                 label={`${hours} hrs`}
                                 size="small"
                                 variant="outlined"
-                                sx={{ height: 22, fontSize: '0.75rem' }}
+                                color="primary"
+                                sx={{ height: 22, fontSize: '0.72rem', fontWeight: 600 }}
                             />
                         )}
-
                         <Typography variant="caption" color="text.secondary">
-                            Reported: {new Date(fault.createdAt).toLocaleDateString('en-GB')}
+                            {new Date(fault.createdAt).toLocaleDateString('en-GB', {
+                                day: '2-digit', month: 'short', year: 'numeric',
+                            })}
                         </Typography>
                     </Box>
                 </CardContent>
             </CardActionArea>
 
-            {user && (user.role === 'admin' || user.role === 'mechanic') && (
-                <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 1.5, pt: 0.5 }}>
-                    <div>
-                        {fault.status === 'closed' ? (
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                color="secondary"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onReopenFault?.(fault);
-                                }}
-                            >
-                                Reopen
-                            </Button>
-                        ) : (
+            {/* Action buttons (admin / mechanic only) */}
+            {isMechOrAdmin && (
+                <CardActions
+                    sx={{
+                        justifyContent: 'space-between',
+                        px: 2,
+                        pb: 1.5,
+                        pt: 0.5,
+                        borderTop: '1px solid',
+                        borderColor: 'divider',
+                        bgcolor: 'background.subtle',
+                    }}
+                >
+                    <Box display="flex" gap={1}>
+                        {isOpen ? (
                             <Button
                                 size="small"
                                 variant="contained"
                                 color="primary"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onCloseFault?.(fault);
-                                }}
+                                onClick={(e) => { e.stopPropagation(); onCloseFault?.(fault); }}
+                                sx={{ minHeight: 34, fontWeight: 700 }}
                             >
-                                Close
+                                Resolve Fault
+                            </Button>
+                        ) : (
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                onClick={(e) => { e.stopPropagation(); onReopenFault?.(fault); }}
+                                sx={{ minHeight: 34 }}
+                            >
+                                Reopen
                             </Button>
                         )}
-                    </div>
+                    </Box>
+
                     {onDeleteFault && (
                         <Button
                             size="small"
+                            variant="text"
                             color="error"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteFault?.(fault);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); onDeleteFault?.(fault); }}
+                            sx={{ minHeight: 34, fontWeight: 600 }}
                         >
                             Delete
                         </Button>
@@ -153,7 +201,7 @@ export default function FaultCard({ fault, onClick, onCloseFault, onReopenFault,
                 open={viewerOpen}
                 onClose={() => setViewerOpen(false)}
                 images={fault.photos || []}
-                title={`Fault ${fault.code || ''} Photo`}
+                title={`Fault ${fault.code || ''} — Photo`}
             />
         </Card>
     );

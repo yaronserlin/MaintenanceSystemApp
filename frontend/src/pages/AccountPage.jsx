@@ -10,10 +10,14 @@ import {
     Avatar,
     IconButton,
     CircularProgress,
-    Divider,
     Paper,
+    InputAdornment,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import PersonIcon from '@mui/icons-material/Person';
+import SecurityIcon from '@mui/icons-material/Security';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/apiClient';
@@ -35,10 +39,21 @@ export default function AccountPage() {
     const { user, setUser, updateAvatar } = useAuth();
     const [form, setForm] = useState({ name: '', email: '' });
     const [pwd, setPwd] = useState({ currentPassword: '', newPassword: '', confirm: '' });
-    const [msg, setMsg] = useState(null);
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(false);
+
+    // Separate alert states for personal info vs password forms
+    const [profileMsg, setProfileMsg] = useState(null);
+    const [profileError, setProfileError] = useState(null);
+    const [pwdMsg, setPwdMsg] = useState(null);
+    const [pwdError, setPwdError] = useState(null);
+
+    const [loadingProfile, setLoadingProfile] = useState(false);
+    const [loadingPwd, setLoadingPwd] = useState(false);
     const [avatarLoading, setAvatarLoading] = useState(false);
+
+    // Password visibility toggles
+    const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+    const [showNewPwd, setShowNewPwd] = useState(false);
+    const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
     useEffect(() => {
         if (user) setForm({ name: user.name || '', email: user.email || '' });
@@ -52,8 +67,8 @@ export default function AccountPage() {
         if (!file) return;
 
         setAvatarLoading(true);
-        setMsg(null);
-        setError(null);
+        setProfileMsg(null);
+        setProfileError(null);
         try {
             if (updateAvatar) {
                 await updateAvatar(file);
@@ -65,9 +80,9 @@ export default function AccountPage() {
                 });
                 setUser(prev => ({ ...prev, ...data }));
             }
-            setMsg('Profile picture updated successfully');
+            setProfileMsg('Profile picture updated successfully');
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to upload profile picture');
+            setProfileError(err.response?.data?.message || 'Failed to upload profile picture');
         } finally {
             setAvatarLoading(false);
         }
@@ -75,50 +90,66 @@ export default function AccountPage() {
 
     const handleUpdateProfile = async (e) => {
         if (e) e.preventDefault();
-        setLoading(true);
-        setMsg(null);
-        setError(null);
+        setLoadingProfile(true);
+        setProfileMsg(null);
+        setProfileError(null);
         try {
             const { data } = await apiClient.put('/auth/me', form);
             setUser(prev => ({ ...prev, ...data }));
-            setMsg('Profile updated successfully');
+            setProfileMsg('Profile updated successfully');
         } catch (err) {
-            setError(err.response?.data?.message || 'Update failed');
+            setProfileError(err.response?.data?.message || 'Update failed');
         } finally {
-            setLoading(false);
+            setLoadingProfile(false);
         }
     };
 
     const handleChangePassword = async (e) => {
         if (e) e.preventDefault();
         if (pwd.newPassword !== pwd.confirm) {
-            setError('New passwords do not match');
+            setPwdError('New passwords do not match');
             return;
         }
-        setLoading(true);
-        setMsg(null);
-        setError(null);
+        setLoadingPwd(true);
+        setPwdMsg(null);
+        setPwdError(null);
         try {
             const { data } = await apiClient.post('/auth/me/change-password', {
                 currentPassword: pwd.currentPassword,
                 newPassword: pwd.newPassword,
             });
-            setMsg(data.message);
+            setPwdMsg(data.message || 'Password changed successfully');
             setPwd({ currentPassword: '', newPassword: '', confirm: '' });
         } catch (err) {
-            setError(err.response?.data?.message || 'Password change failed');
+            setPwdError(err.response?.data?.message || 'Password change failed');
             setPwd({ currentPassword: '', newPassword: '', confirm: '' });
         } finally {
-            setLoading(false);
+            setLoadingPwd(false);
         }
     };
 
-    return (
-        <Container maxWidth="sm" sx={{ mt: 4, mb: 6 }}>
-            <Typography variant="h4" gutterBottom>Account Settings</Typography>
+    // Calculate password strength
+    const getStrength = (val) => {
+        if (!val) return 0;
+        if (val.length < 6) return 1;
+        if (val.length < 8) return 2;
+        if (val.length < 12) return 3;
+        return 4;
+    };
+    const strength = getStrength(pwd.newPassword);
+    const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+    const strengthColors = ['', '#DC2626', '#F59E0B', '#F59E0B', '#16A34A'];
 
-            {msg && <Alert severity="success" sx={{ mb: 2 }}>{msg}</Alert>}
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    return (
+        <Container maxWidth="sm" sx={{ mt: 3, mb: 6 }}>
+            <Box mb={3.5}>
+                <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">
+                    Account Settings
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Manage your personal profile, photo, and login security credentials
+                </Typography>
+            </Box>
 
             {/* Profile Avatar Card */}
             <Paper
@@ -127,44 +158,55 @@ export default function AccountPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 3,
-                    mb: 4,
+                    mb: 3.5,
                     p: 3,
-                    borderRadius: 2,
+                    borderRadius: 3,
+                    borderLeft: '4px solid #2563EB',
                 }}
             >
                 <Box position="relative">
                     <Avatar
                         src={getMediaUrl(user?.avatar)}
                         alt={user?.name}
-                        sx={{ width: 84, height: 84, fontSize: '2rem', bgcolor: 'primary.main', color: 'primary.contrastText' }}
+                        sx={{
+                            width: 80,
+                            height: 80,
+                            fontSize: '2rem',
+                            fontWeight: 800,
+                            bgcolor: 'primary.main',
+                            color: 'primary.contrastText',
+                        }}
                     >
-                        {user?.name?.charAt(0)}
+                        {user?.name?.charAt(0) || 'U'}
                     </Avatar>
                     {avatarLoading && (
                         <CircularProgress
-                            size={84}
+                            size={80}
                             sx={{
                                 position: 'absolute',
                                 top: 0,
                                 left: 0,
                                 zIndex: 1,
+                                color: 'primary.main',
                             }}
                         />
                     )}
                 </Box>
                 <Box>
                     <Typography variant="subtitle1" fontWeight={700}>
-                        Profile Picture
+                        Profile Photo
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
                         JPG, PNG, GIF up to 5MB
                     </Typography>
                     <Button
                         component="label"
                         variant="outlined"
                         size="small"
+                        color="primary"
                         startIcon={<PhotoCameraIcon />}
                         disabled={avatarLoading}
+                        sx={{ fontWeight: 600 }}
                     >
                         Upload Photo
                         <VisuallyHiddenInput
@@ -176,14 +218,30 @@ export default function AccountPage() {
                 </Box>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+            {/* Personal Information */}
+            <Paper
+                variant="outlined"
+                sx={{
+                    p: 3,
+                    mb: 3.5,
+                    borderRadius: 3,
+                    borderLeft: '4px solid #2563EB',
+                }}
+            >
                 <Box component="form" onSubmit={handleUpdateProfile}>
-                    <Typography variant="h6" fontWeight={700} gutterBottom>
-                        Personal Information
-                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1.25} mb={0.5}>
+                        <PersonIcon color="primary" />
+                        <Typography variant="h6" fontWeight={700}>
+                            Personal Information
+                        </Typography>
+                    </Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Update your public profile display name and notification email.
+                        Update your public display name and notification email address.
                     </Typography>
+
+                    {profileMsg && <Alert severity="success" sx={{ mb: 2 }}>{profileMsg}</Alert>}
+                    {profileError && <Alert severity="error" sx={{ mb: 2 }}>{profileError}</Alert>}
+
                     <TextField
                         fullWidth
                         label="Full Name"
@@ -203,52 +261,147 @@ export default function AccountPage() {
                         sx={{ mb: 2.5 }}
                         required
                     />
-                    <Button type="submit" variant="contained" disabled={loading}>
-                        Save Changes
+                    <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        disabled={loadingProfile}
+                        sx={{ minHeight: 44, fontWeight: 700 }}
+                    >
+                        {loadingProfile ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
                     </Button>
                 </Box>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+            {/* Security & Password */}
+            <Paper
+                variant="outlined"
+                sx={{
+                    p: 3,
+                    borderRadius: 3,
+                    borderLeft: '4px solid #F59E0B',
+                }}
+            >
                 <Box component="form" onSubmit={handleChangePassword}>
-                    <Typography variant="h6" fontWeight={700} gutterBottom>
-                        Security & Password
-                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1.25} mb={0.5}>
+                        <SecurityIcon sx={{ color: '#F59E0B' }} />
+                        <Typography variant="h6" fontWeight={700}>
+                            Security & Password
+                        </Typography>
+                    </Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Ensure your account is using a secure, strong password.
+                        Ensure your account is protected with a secure and unique password.
                     </Typography>
+
+                    {pwdMsg && <Alert severity="success" sx={{ mb: 2 }}>{pwdMsg}</Alert>}
+                    {pwdError && <Alert severity="error" sx={{ mb: 2 }}>{pwdError}</Alert>}
+
+                    {/* Current Password */}
                     <TextField
                         fullWidth
                         label="Current Password"
                         name="currentPassword"
-                        type="password"
+                        type={showCurrentPwd ? 'text' : 'password'}
                         value={pwd.currentPassword}
                         onChange={handlePwdChange}
                         sx={{ mb: 2 }}
                         required
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setShowCurrentPwd(v => !v)}
+                                        edge="end"
+                                    >
+                                        {showCurrentPwd ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
+
+                    {/* New Password */}
                     <TextField
                         fullWidth
                         label="New Password"
                         name="newPassword"
-                        type="password"
+                        type={showNewPwd ? 'text' : 'password'}
                         value={pwd.newPassword}
                         onChange={handlePwdChange}
-                        sx={{ mb: 2 }}
+                        sx={{ mb: strength > 0 ? 1 : 2 }}
                         required
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setShowNewPwd(v => !v)}
+                                        edge="end"
+                                    >
+                                        {showNewPwd ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
+
+                    {/* Password Strength Indicator */}
+                    {strength > 0 && (
+                        <Box sx={{ mb: 2 }}>
+                            <Box display="flex" gap={0.5} mb={0.5}>
+                                {[1, 2, 3, 4].map(idx => (
+                                    <Box
+                                        key={idx}
+                                        sx={{
+                                            flex: 1,
+                                            height: 4,
+                                            borderRadius: 2,
+                                            bgcolor: idx <= strength ? strengthColors[strength] : 'divider',
+                                            transition: 'background-color 0.2s ease',
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+                            <Typography variant="caption" sx={{ color: strengthColors[strength], fontWeight: 600 }}>
+                                Strength: {strengthLabels[strength]}
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {/* Confirm Password */}
                     <TextField
                         fullWidth
                         label="Confirm New Password"
                         name="confirm"
-                        type="password"
+                        type={showConfirmPwd ? 'text' : 'password'}
                         value={pwd.confirm}
                         onChange={handlePwdChange}
                         sx={{ mb: 2.5 }}
                         required
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setShowConfirmPwd(v => !v)}
+                                        edge="end"
+                                    >
+                                        {showConfirmPwd ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
-                    <Button type="submit" variant="contained" disabled={loading}>
-                        Update Password
+
+                    <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        disabled={loadingPwd}
+                        sx={{ minHeight: 44, fontWeight: 700 }}
+                    >
+                        {loadingPwd ? <CircularProgress size={20} color="inherit" /> : 'Update Password'}
                     </Button>
                 </Box>
             </Paper>

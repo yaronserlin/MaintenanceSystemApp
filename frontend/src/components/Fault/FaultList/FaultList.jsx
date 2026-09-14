@@ -136,7 +136,7 @@ export default function FaultList({
                                                         onCloseFault?.(fault);
                                                     }}
                                                 >
-                                                    Close
+                                                    Resolve
                                                 </Button>
                                             )}
                                         </div>
@@ -266,7 +266,7 @@ export default function FaultList({
                                                     color="primary"
                                                     onClick={() => onCloseFault?.(fault)}
                                                 >
-                                                    Close
+                                                    Resolve
                                                 </Button>
                                             )}
                                             {onDeleteFault && (

@@ -209,12 +209,27 @@ export default function FaultDetailsDialog({
                                     onClose();
                                     onCloseFault(fault);
                                 }}
+                                sx={{ fontWeight: 700 }}
                             >
-                                Close
+                                Resolve Fault
                             </Button>
                         )}
-                        <Button onClick={onClose} variant="outlined">
-                            Close
+                        <Button
+                            onClick={onClose}
+                            variant="outlined"
+                            color="inherit"
+                            sx={{
+                                color: 'text.secondary',
+                                borderColor: 'divider',
+                                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                fontWeight: 600,
+                                '&:hover': {
+                                    borderColor: 'text.primary',
+                                    color: 'text.primary',
+                                },
+                            }}
+                        >
+                            Dismiss
                         </Button>
                     </Box>
                 </DialogActions>

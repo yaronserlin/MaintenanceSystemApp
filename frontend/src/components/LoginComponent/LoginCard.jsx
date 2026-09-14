@@ -1,40 +1,63 @@
 // src/components/LoginComponent/LoginCard.jsx
 import React, { useState } from 'react';
-import {
-    Card,
-    CardContent,
-    Typography,
-    Button,
-    Box,
-} from '@mui/material';
-
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import LoginForm from './LoginForm';
 import SignupForm from './SignupForm';
 
 export default function LoginCard() {
     const [mode, setMode] = useState('login'); // 'login' | 'signup'
+    const isLogin = mode === 'login';
 
     return (
-        <Card sx={{ minWidth: 275, maxWidth: 450, width: '100%' }}>
-            <CardContent>
-                <Typography variant="h5" gutterBottom>
-                    {mode === 'login' ? 'Login' : 'Create Company'}
+        <Box>
+            {/* Heading */}
+            <Box mb={4}>
+                <Typography
+                    variant="h4"
+                    fontWeight={800}
+                    letterSpacing="-0.025em"
+                    gutterBottom
+                    sx={{ color: 'text.primary', lineHeight: 1.2 }}
+                >
+                    {isLogin ? 'Welcome back' : 'Create an account'}
                 </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                    {isLogin
+                        ? 'Sign in to access your fleet management dashboard.'
+                        : 'Set up your company account to get started.'
+                    }
+                </Typography>
+            </Box>
 
-                {mode === 'login' ? <LoginForm /> : <SignupForm />}
+            {/* Form */}
+            {isLogin ? <LoginForm /> : <SignupForm />}
 
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                    <Button
-                        variant="text"
-                        size="small"
-                        onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                    >
-                        {mode === 'login'
-                            ? "Don't have a company account? Sign up"
-                            : 'Already have an account? Log in'}
-                    </Button>
-                </Box>
-            </CardContent>
-        </Card>
+            {/* Toggle */}
+            <Divider sx={{ my: 3 }} />
+            <Box display="flex" alignItems="center" justifyContent="center" gap={0.75}>
+                <Typography variant="body2" color="text.secondary">
+                    {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                </Typography>
+                <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => setMode(isLogin ? 'signup' : 'login')}
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: '0.875rem',
+                        p: '2px 6px',
+                        minHeight: 'auto',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 3,
+                        '&:hover': { textDecoration: 'underline', opacity: 0.8 },
+                    }}
+                >
+                    {isLogin ? 'Sign up' : 'Sign in'}
+                </Button>
+            </Box>
+        </Box>
     );
 }

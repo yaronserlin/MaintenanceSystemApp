@@ -7,12 +7,19 @@ import BuildCircleIcon from '@mui/icons-material/BuildCircle';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 
+const PAGE_TO_PATH = (page) => {
+    const lower = page.toLowerCase();
+    if (lower === 'faults' || lower === 'my faults') return '/dashboard';
+    return `/${lower}`;
+};
+
 export default function DesktopNav({ display, user, pages }) {
     const location = useLocation();
     if (!user) return null;
 
     return (
         <>
+            {/* ── Brand Logo ─────────────────────────────────── */}
             <Box
                 component={RouterLink}
                 to="/dashboard"
@@ -23,6 +30,7 @@ export default function DesktopNav({ display, user, pages }) {
                     mr: 4,
                     textDecoration: 'none',
                     color: 'text.primary',
+                    flexShrink: 0,
                     '&:focus-visible': {
                         outline: '2px solid',
                         outlineColor: 'primary.main',
@@ -30,28 +38,32 @@ export default function DesktopNav({ display, user, pages }) {
                     },
                 }}
             >
+                {/* Blue logo badge */}
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: 34,
-                        height: 34,
+                        width: 36,
+                        height: 36,
                         borderRadius: 1.5,
-                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-                        color: 'text.primary',
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        flexShrink: 0,
                     }}
                 >
-                    <BuildCircleIcon fontSize="small" />
+                    <BuildCircleIcon sx={{ fontSize: 20 }} />
                 </Box>
+
                 <Box>
                     <Typography
                         variant="subtitle2"
                         sx={{
                             fontWeight: 800,
-                            letterSpacing: '0.04em',
+                            letterSpacing: '-0.01em',
                             lineHeight: 1.1,
                             color: 'text.primary',
+                            fontSize: '0.875rem',
                         }}
                     >
                         MAINTENANCE
@@ -60,43 +72,52 @@ export default function DesktopNav({ display, user, pages }) {
                         variant="caption"
                         sx={{
                             fontWeight: 600,
-                            letterSpacing: '0.08em',
-                            fontSize: '0.62rem',
+                            letterSpacing: '0.06em',
+                            fontSize: '0.6rem',
                             color: 'text.secondary',
                             display: 'block',
+                            textTransform: 'uppercase',
                         }}
                     >
-                        {user?.role === 'operator' ? 'OPERATOR PORTAL' : 'OPS MANAGER'}
+                        {user?.role === 'operator' ? 'Operator Portal' : 'Ops Manager'}
                     </Typography>
                 </Box>
             </Box>
 
-            <Box sx={{ flexGrow: 1, display, gap: 1 }}>
+            {/* ── Nav Links ──────────────────────────────────── */}
+            <Box sx={{ flexGrow: 1, display, gap: 0.5, alignItems: 'center' }}>
                 {pages.map(page => {
-                    const targetPath = (page.toLowerCase() === 'faults' || page.toLowerCase() === 'my faults')
-                        ? '/dashboard'
-                        : `/${page.toLowerCase()}`;
-                    const isActive = location.pathname === targetPath || (targetPath !== '/dashboard' && location.pathname.startsWith(targetPath));
+                    const targetPath = PAGE_TO_PATH(page);
+                    const isActive =
+                        location.pathname === targetPath ||
+                        (targetPath !== '/dashboard' && location.pathname.startsWith(targetPath));
 
                     return (
                         <Button
                             key={page}
                             component={RouterLink}
                             to={targetPath}
+                            disableRipple={false}
                             sx={{
-                                my: 1.5,
+                                my: 1,
                                 px: 1.75,
-                                py: 0.6,
-                                color: isActive ? 'text.primary' : 'text.secondary',
-                                bgcolor: isActive ? (theme) => alpha(theme.palette.text.primary, 0.06) : 'transparent',
-                                borderBottom: isActive ? (theme) => `2px solid ${theme.palette.text.primary}` : '2px solid transparent',
-                                borderRadius: '4px 4px 0 0',
+                                py: 0.75,
+                                color: isActive ? 'primary.main' : 'text.secondary',
+                                bgcolor: isActive
+                                    ? (theme) => alpha(theme.palette.primary.main, 0.08)
+                                    : 'transparent',
+                                borderBottom: isActive
+                                    ? (theme) => `2px solid ${theme.palette.primary.main}`
+                                    : '2px solid transparent',
+                                borderRadius: '6px 6px 0 0',
                                 fontWeight: isActive ? 700 : 500,
                                 fontSize: '0.875rem',
-                                transition: 'all 0.15s ease',
+                                minHeight: 40,
+                                transition: 'color 0.15s ease, background-color 0.15s ease',
                                 '&:hover': {
-                                    color: 'text.primary',
-                                    bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04),
+                                    color: 'primary.main',
+                                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.06),
+                                    opacity: 1,
                                 },
                             }}
                         >
