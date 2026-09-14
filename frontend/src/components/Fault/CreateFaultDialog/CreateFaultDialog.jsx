@@ -15,8 +15,17 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { CreateFaultForm } from '../FaultForms/FaultForms';
 
-export default function CreateFaultDialog({ open, onClose, onSubmit, toolId, equipmentId }) {
-    const activeEquipmentId = equipmentId || toolId;
+export default function CreateFaultDialog({
+    open,
+    onClose,
+    onSubmit,
+    toolId,
+    equipmentId,
+    equipment,
+    lockEquipment,
+}) {
+    const activeEquipmentId = equipment?._id || equipment?.id || equipmentId || toolId;
+    const isLocked = lockEquipment !== undefined ? lockEquipment : Boolean(activeEquipmentId);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -47,6 +56,8 @@ export default function CreateFaultDialog({ open, onClose, onSubmit, toolId, equ
                         onSubmit={onSubmit}
                         toolId={activeEquipmentId}
                         equipmentId={activeEquipmentId}
+                        equipment={equipment}
+                        lockEquipment={isLocked}
                         formId="create-fault-modal-form"
                         hideSubmitButton={true}
                     />
