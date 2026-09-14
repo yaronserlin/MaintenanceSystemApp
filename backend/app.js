@@ -27,6 +27,9 @@ const logger = require('./utils/logger');
 
 const app = express();
 
+// Trust reverse proxy headers (e.g. Render load balancer / X-Forwarded-For for express-rate-limit)
+app.set('trust proxy', 1);
+
 // Connect Database if not already connected (e.g., in testing)
 if (process.env.NODE_ENV !== 'test') {
     connectDB();
