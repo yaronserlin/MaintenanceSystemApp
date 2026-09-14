@@ -1,4 +1,3 @@
-// src/components/Fault/FaultDetailsDialog/FaultDetailsDialog.jsx
 import React, { useState } from 'react';
 import {
     Dialog,
@@ -12,9 +11,13 @@ import {
     Box,
     Typography,
     Chip,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SpeedIcon from '@mui/icons-material/Speed';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { getMediaUrl } from '../../../utils/mediaUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import ConfirmDialog from '../../ConfirmDialog/ConfirmDialog';
@@ -28,6 +31,8 @@ export default function FaultDetailsDialog({
     onCloseFault,
     onReopenFault,
 }) {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { user } = useAuth();
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(null);
@@ -41,15 +46,16 @@ export default function FaultDetailsDialog({
 
     return (
         <>
-            <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={isMobile}>
                 <DialogTitle
                     component="div"
-                    sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}
                 >
-                    <Typography variant="h6" component="div">Fault Details</Typography>
+                    <Typography variant="h6" component="div" fontWeight="bold">Fault Details</Typography>
                     {fault?.status && (
                         <Chip
-                            label={fault.status.toUpperCase()}
+                            icon={fault.status === 'open' ? <WarningAmberIcon /> : <CheckCircleIcon />}
+                            label={fault.status === 'open' ? 'Open Fault' : 'Resolved'}
                             color={fault.status === 'open' ? 'error' : 'success'}
                             size="small"
                         />

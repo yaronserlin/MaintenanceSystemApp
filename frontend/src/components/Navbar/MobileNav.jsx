@@ -6,23 +6,28 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
-import AgricultureIcon from '@mui/icons-material/Agriculture';
-import { useNavigate } from 'react-router-dom';
+import BuildCircleIcon from '@mui/icons-material/BuildCircle';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 
 export default function MobileNav({ display, user, pages }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const navigate = useNavigate();
+    const location = useLocation();
 
     const handleOpen = e => setAnchorEl(e.currentTarget);
     const handleClose = () => setAnchorEl(null);
-
 
     return (
         <>
             <Box sx={{ flexGrow: 1, display }}>
                 {user && (
                     <>
-                        <IconButton size="large" onClick={handleOpen} color="inherit">
+                        <IconButton
+                            size="medium"
+                            onClick={handleOpen}
+                            aria-label="Open navigation menu"
+                            sx={{ mr: 1, color: 'text.primary' }}
+                        >
                             <MenuIcon />
                         </IconButton>
                         <Menu
@@ -32,43 +37,62 @@ export default function MobileNav({ display, user, pages }) {
                             transformOrigin={{ vertical: 'top', horizontal: 'left' }}
                             open={Boolean(anchorEl)}
                             onClose={handleClose}
-                            sx={{ display: { xs: 'block', md: 'none' } }}
+                            PaperProps={{
+                                sx: { minWidth: 180, mt: 1, borderRadius: 2 }
+                            }}
                         >
-                            {pages.map(page => (
-                                <MenuItem
-                                    key={page}
-                                    onClick={() => {
-                                        handleClose();
-                                        navigate(`/${page.toLowerCase()}`);
-                                    }}
-                                >
-                                    <Typography textAlign="center">{page}</Typography>
-                                </MenuItem>
-                            ))}
+                            {pages.map(page => {
+                                const targetPath = (page.toLowerCase() === 'faults' || page.toLowerCase() === 'my faults')
+                                    ? '/dashboard'
+                                    : `/${page.toLowerCase()}`;
+                                const isActive = location.pathname === targetPath || (targetPath !== '/dashboard' && location.pathname.startsWith(targetPath));
+
+                                return (
+                                    <MenuItem
+                                        key={page}
+                                        selected={isActive}
+                                        onClick={() => {
+                                            handleClose();
+                                            navigate(targetPath);
+                                        }}
+                                        sx={{ py: 1.25 }}
+                                    >
+                                        <Typography fontWeight={isActive ? 700 : 500} color="text.primary">
+                                            {page}
+                                        </Typography>
+                                    </MenuItem>
+                                );
+                            })}
                         </Menu>
                     </>
                 )}
-
             </Box>
-            <AgricultureIcon sx={{ display, mr: 1 }} />
-            <Typography
-                variant="h5"
-                noWrap
-                component="a"
-                href="/"
+
+            <Box
+                component={RouterLink}
+                to="/dashboard"
                 sx={{
-                    mr: 2,
                     display,
+                    alignItems: 'center',
+                    gap: 1,
                     flexGrow: 1,
-                    fontFamily: 'monospace',
-                    fontWeight: 700,
-                    letterSpacing: '.3rem',
-                    color: 'inherit',
                     textDecoration: 'none',
+                    color: 'text.primary',
                 }}
             >
-                MAINTENANCE
-            </Typography>
+                <BuildCircleIcon sx={{ color: 'text.primary', fontSize: 24 }} />
+                <Typography
+                    variant="subtitle1"
+                    noWrap
+                    sx={{
+                        fontWeight: 800,
+                        letterSpacing: '0.04em',
+                        color: 'text.primary',
+                    }}
+                >
+                    MAINTENANCE
+                </Typography>
+            </Box>
         </>
     );
 }

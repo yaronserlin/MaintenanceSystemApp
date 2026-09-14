@@ -8,6 +8,7 @@ const {
     getAllFaults,
     getFaultById,
     createFault,
+    updateFault,
     closeFault,
     reopenFault,
     deleteFault,
@@ -19,7 +20,8 @@ router.get('/', getAllFaults);
 router.get('/:id', validateObjectId('id'), getFaultById);
 router.post('/', upload.array('photos', 5), createFault);
 
-// Role check: only mechanics or admins can close, reopen, or delete faults
+// Role check: only mechanics or admins can update, close, reopen, or delete faults
+router.put('/:id', validateObjectId('id'), ensureMechanicOrAdmin, updateFault);
 router.patch('/:id/close', validateObjectId('id'), ensureMechanicOrAdmin, closeFault);
 router.put('/:id/reopen', validateObjectId('id'), ensureMechanicOrAdmin, reopenFault);
 router.patch('/:id/reopen', validateObjectId('id'), ensureMechanicOrAdmin, reopenFault);

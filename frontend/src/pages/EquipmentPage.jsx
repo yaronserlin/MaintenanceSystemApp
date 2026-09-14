@@ -1,8 +1,11 @@
-// src/pages/EquipmentPage.jsx
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Container, Typography, Box, Button, Tabs, Tab } from '@mui/material';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Container, Typography, Box, Button, Tabs, Tab, Chip, Paper } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SpeedIcon from '@mui/icons-material/Speed';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import FaultList from '../components/Fault/FaultList/FaultList';
 import FaultDetailsDialog from '../components/Fault/FaultDetailsDialog/FaultDetailsDialog';
 import CreateFaultDialog from '../components/Fault/CreateFaultDialog/CreateFaultDialog';
@@ -44,6 +47,7 @@ function TabPanel(props) {
 
 export default function EquipmentPage() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const { user } = useAuth();
     const { equipment, loading, error: equipmentError, fetchEquipment } = useEquipment();
     const { faults, error: faultError, createFault, deleteFault, closeFault, reopenFault } = useFault(id);
@@ -138,25 +142,129 @@ export default function EquipmentPage() {
 
     const booksCount = tool.books?.length || 0;
     const maintenanceCount = tool.maintenanceSchedule?.length || 0;
+    const openFaultsCount = (faults || []).filter(f => f.status === 'open').length;
 
     return (
-        <Container sx={{ mt: 4, mb: 6 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2} mb={2}>
-                <Box>
-                    <Typography variant="h4" gutterBottom>{tool.name}</Typography>
-                    <Typography variant="subtitle1" color="text.secondary">
-                        Serial: {tool.serialNumber || tool.localSerialNumber || 'N/A'} {tool.model ? `| Model: ${tool.model}` : ''}
-                    </Typography>
-                    <Typography variant="body1" sx={{ mt: 0.5 }}>{tool.description}</Typography>
-                </Box>
+        <Container sx={{ mt: 3, mb: 6 }}>
+            {/* Back button */}
+            <Box mb={2}>
+                <Button
+                    size="small"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/equipment')}
+                    sx={{ color: 'text.secondary' }}
+                >
+                    Back to Fleet Directory
+                </Button>
             </Box>
 
-            <Box sx={{ mt: 3 }}>
+            {/* Equipment Header Banner */}
+            <Paper variant="outlined" sx={{ p: { xs: 2.5, sm: 3 }, borderRadius: 3, mb: 3 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
+                    <Box>
+                        <Box display="flex" alignItems="center" gap={1.5} mb={1}>
+                            <Typography variant="h4" fontWeight={700}>
+                                {tool.name}
+                            </Typography>
+                            {tool.localSerialNumber && (
+                                <Chip
+                                    label={`UNIT: ${tool.localSerialNumber}`}
+                                    color="secondary"
+                                    size="small"
+                                    sx={{ fontWeight: 700 }}
+                                />
+                            )}
+                            <Chip
+                                icon={openFaultsCount > 0 ? <WarningAmberIcon /> : <CheckCircleIcon />}
+                                label={openFaultsCount > 0 ? `${openFaultsCount} Active Fault${openFaultsCount > 1 ? 's' : ''}` : 'Operational'}
+                                color={openFaultsCount > 0 ? 'error' : 'success'}
+                                size="small"
+                                sx={{ fontWeight: 600 }}
+                            />
+                        </Box>
+
+                        <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
+                            {tool.model && (
+                                <Typography variant="body2" color="text.secondary">
+                                    <strong>Model:</strong> {tool.model}
+                                </Typography>
+                            )}
+                            {tool.serialNumber && (
+                                <Typography variant="body2" color="text.secondary">
+                                    <strong>Serial:</strong> {tool.serialNumber}
+                                </Typography>
+                            )}
+                            {tool.currentEngineHours !== undefined && (
+                                <Chip
+                                    icon={<SpeedIcon sx={{ fontSize: '1rem !important' }} />}
+                                    label={`${tool.currentEngineHours} Operating Hours`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="secondary"
+                                    sx={{ fontWeight: 600 }}
+                                />
+                            )}
+                        </Box>
+
+                        {tool.description && (
+                            <Typography variant="body2" sx={{ mt: 1.5, color: 'text.secondary' }}>
+                                {tool.description}
+                            </Typography>
+                        )}
+                    </Box>
+                </Box>
+            </Paper>
+
+            <Box sx={{ mt: 2 }}>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs value={value} onChange={handleChange} aria-label="tabs for equipment details" variant="fullWidth">
-                        <Tab label={`Faults (${faults?.length || 0})`} {...a11yProps(0)} />
-                        <Tab label={`Maintenance (${maintenanceCount})`} {...a11yProps(1)} />
-                        <Tab label={`Books & Manuals (${booksCount})`} {...a11yProps(2)} />
+                    <Tabs
+                        value={value}
+                        onChange={handleChange}
+                        aria-label="tabs for equipment details"
+                        variant="fullWidth"
+                        textColor="secondary"
+                        indicatorColor="secondary"
+                    >
+                        <Tab
+                            label={
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <span>Reported Faults</span>
+                                    <Chip
+                                        label={faults?.length || 0}
+                                        size="small"
+                                        color={openFaultsCount > 0 ? 'error' : 'default'}
+                                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }}
+                                    />
+                                </Box>
+                            }
+                            {...a11yProps(0)}
+                        />
+                        <Tab
+                            label={
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <span>Maintenance</span>
+                                    <Chip
+                                        label={maintenanceCount}
+                                        size="small"
+                                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }}
+                                    />
+                                </Box>
+                            }
+                            {...a11yProps(1)}
+                        />
+                        <Tab
+                            label={
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <span>Manuals & Books</span>
+                                    <Chip
+                                        label={booksCount}
+                                        size="small"
+                                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }}
+                                    />
+                                </Box>
+                            }
+                            {...a11yProps(2)}
+                        />
                     </Tabs>
                 </Box>
 

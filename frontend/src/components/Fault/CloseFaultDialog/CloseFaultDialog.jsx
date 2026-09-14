@@ -1,4 +1,3 @@
-// src/components/Fault/CloseFaultDialog/CloseFaultDialog.jsx
 import React, { useState, useEffect } from 'react';
 import {
     Dialog,
@@ -11,10 +10,14 @@ import {
     Box,
     Chip,
     Alert,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import SpeedIcon from '@mui/icons-material/Speed';
 
 export default function CloseFaultDialog({ open, onClose, onConfirm, fault, tool, equipment }) {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const activeEquipment = equipment || tool;
     const lastReportedHours = activeEquipment?.currentEngineHours ?? fault?.engineHours ?? 0;
     const [engineHours, setEngineHours] = useState('');
@@ -45,8 +48,8 @@ export default function CloseFaultDialog({ open, onClose, onConfirm, fault, tool
     if (!fault) return null;
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ pb: 1 }}>Close Fault & Update Engine Hours</DialogTitle>
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={isMobile}>
+            <DialogTitle sx={{ pb: 1, fontWeight: 700 }}>Close Fault & Update Hours</DialogTitle>
             <DialogContent dividers>
                 <Box mb={2}>
                     <Typography variant="subtitle1" fontWeight="bold">

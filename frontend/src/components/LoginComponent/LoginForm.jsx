@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import useForm from '../../hooks/useForm';
-import Input from '../From/Input';
+import Input from '../Form/Input';
 import {
     validateEmail,
     validatePassword,

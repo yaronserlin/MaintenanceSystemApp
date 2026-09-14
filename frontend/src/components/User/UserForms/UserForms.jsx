@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Box, Button, Alert } from '@mui/material';
 
 import useForm from '../../../hooks/useForm';
-import Input from '../../From/Input';
+import Input from '../../Form/Input';
 import {
     validateName,
     validateEmail,

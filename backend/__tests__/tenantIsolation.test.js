@@ -426,6 +426,62 @@ describe('Multi-Tenant SaaS Isolation & Security Tests', () => {
             expect(schedRes.body.schedule.checklist).toHaveLength(3);
             expect(schedRes.body.schedule.checklist[1].text).toBe('Replace primary cartridge filter');
         });
+
+        it('PUT /api/faults/:id updates fault fields for Company A admin', async () => {
+            const res = await request(app)
+                .put(`/api/faults/${faultAId}`)
+                .set('Authorization', `Bearer ${companyAToken}`)
+                .send({
+                    description: 'Updated fault description with new symptoms',
+                    code: 'FLT-UPDATED-01',
+                    engineHours: 1550,
+                });
+
+            expect(res.status).toBe(200);
+            expect(res.body.description).toBe('Updated fault description with new symptoms');
+            expect(res.body.code).toBe('FLT-UPDATED-01');
+            expect(res.body.engineHours).toBe(1550);
+        });
+
+        it('PUT /api/faults/:id returns 403 for operator role', async () => {
+            const res = await request(app)
+                .put(`/api/faults/${faultAId}`)
+                .set('Authorization', `Bearer ${companyAOperatorToken}`)
+                .send({ description: 'Operator trying to edit fault' });
+
+            expect(res.status).toBe(403);
+        });
+
+        it('PUT /api/faults/:id returns 404 for Company B (tenant isolation)', async () => {
+            const res = await request(app)
+                .put(`/api/faults/${faultAId}`)
+                .set('Authorization', `Bearer ${companyBToken}`)
+                .send({ description: 'Cross tenant modification' });
+
+            expect(res.status).toBe(404);
+        });
+
+        it('Returns 400 when invalid nested ObjectId is supplied', async () => {
+            const res = await request(app)
+                .get(`/api/equipment/${toolAId}/schedules/invalid-schedule-id`)
+                .set('Authorization', `Bearer ${companyAToken}`);
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toMatch(/invalid scheduleId format/i);
+        });
+
+        it('GET /uploads/:filename enforces authentication', async () => {
+            const res = await request(app).get('/uploads/test-manual.pdf');
+            expect(res.status).toBe(401);
+        });
+
+        it('GET /uploads/:filename returns 404 for authenticated user when file does not exist', async () => {
+            const res = await request(app)
+                .get('/uploads/nonexistent-manual-12345.pdf')
+                .set('Authorization', `Bearer ${companyAToken}`);
+
+            expect(res.status).toBe(404);
+        });
     });
 
     // ── 6. Health & System Check ────────────────────────────────────
