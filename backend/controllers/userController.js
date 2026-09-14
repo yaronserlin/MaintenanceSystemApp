@@ -34,9 +34,6 @@ exports.createUser = async (req, res, next) => {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
         }
 
-        const userRole = (role && typeof role === 'string' && ALLOWED_ROLES.includes(role.trim()))
-            ? role.trim()
-            : 'operator';
         const normalizedEmail = email.trim().toLowerCase();
 
         const existing = await User.findOne({ email: normalizedEmail });
@@ -49,8 +46,9 @@ exports.createUser = async (req, res, next) => {
             name: name.trim(),
             email: normalizedEmail,
             password: hashedPassword,
-            role: userRole,
+            role: 'operator', // Created by default as operator; can be updated later
             companyId: req.user.companyId,
+            mustChangePassword: true, // Force password change after first login
         });
 
         const userResponse = user.toObject();

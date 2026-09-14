@@ -11,16 +11,17 @@ import {
     Box,
     Typography,
     Chip,
+    IconButton,
     useMediaQuery,
     useTheme,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
 import SpeedIcon from '@mui/icons-material/Speed';
+import ReplayIcon from '@mui/icons-material/Replay';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { getMediaUrl } from '../../../utils/mediaUtils';
 import { useAuth } from '../../../contexts/AuthContext';
-import ConfirmDialog from '../../ConfirmDialog/ConfirmDialog';
 import ImageViewerDialog from '../../ImageViewer/ImageViewerDialog';
 
 export default function FaultDetailsDialog({
@@ -34,32 +35,42 @@ export default function FaultDetailsDialog({
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { user } = useAuth();
-    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(null);
     const canManage = user && (user.role === 'admin' || user.role === 'mechanic');
 
-    const handleConfirmDelete = () => {
-        setConfirmDeleteOpen(false);
-        onDeleteFault?.(fault);
-        onClose();
-    };
-
     return (
         <>
-            <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={isMobile}>
+            <Dialog
+                open={open}
+                onClose={onClose}
+                maxWidth="sm"
+                fullWidth
+                sx={{
+                    '& .MuiDialog-paper': {
+                        m: { xs: 2, sm: 3 },
+                        maxHeight: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' },
+                        borderRadius: 3,
+                    },
+                }}
+            >
                 <DialogTitle
                     component="div"
-                    sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}
+                    sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, pr: 1.5 }}
                 >
-                    <Typography variant="h6" component="div" fontWeight="bold">Fault Details</Typography>
-                    {fault?.status && (
-                        <Chip
-                            icon={fault.status === 'open' ? <WarningAmberIcon /> : <CheckCircleIcon />}
-                            label={fault.status === 'open' ? 'Open Fault' : 'Resolved'}
-                            color={fault.status === 'open' ? 'error' : 'success'}
-                            size="small"
-                        />
-                    )}
+                    <Box display="flex" alignItems="center" gap={1.25} flexWrap="wrap">
+                        <Typography variant="h6" component="div" fontWeight="bold">Fault Details</Typography>
+                        {fault?.status && (
+                            <Chip
+                                icon={fault.status === 'open' ? <WarningAmberIcon /> : <CheckCircleIcon />}
+                                label={fault.status === 'open' ? 'Open Fault' : 'Resolved'}
+                                color={fault.status === 'open' ? 'error' : 'success'}
+                                size="small"
+                            />
+                        )}
+                    </Box>
+                    <IconButton onClick={onClose} size="small" aria-label="close">
+                        <CloseIcon />
+                    </IconButton>
                 </DialogTitle>
                 <DialogContent dividers>
                     {fault && (
@@ -75,6 +86,7 @@ export default function FaultDetailsDialog({
                                 <ListItem disableGutters>
                                     <ListItemText
                                         primary="Reported Engine Hours"
+                                        secondaryTypographyProps={{ component: 'div' }}
                                         secondary={
                                             <Chip
                                                 icon={<SpeedIcon />}
@@ -92,6 +104,7 @@ export default function FaultDetailsDialog({
                                 <ListItem disableGutters>
                                     <ListItemText
                                         primary="Closing Engine Hours"
+                                        secondaryTypographyProps={{ component: 'div' }}
                                         secondary={
                                             <Chip
                                                 icon={<SpeedIcon />}
@@ -121,14 +134,45 @@ export default function FaultDetailsDialog({
                             </ListItem>
 
                             {fault.status === 'closed' && (
-                                <ListItem disableGutters>
-                                    <ListItemText
-                                        primary="Closed At"
-                                        secondary={
-                                            fault.closedAt ? new Date(fault.closedAt).toLocaleString('en-GB') : 'N/A'
-                                        }
-                                    />
-                                </ListItem>
+                                <>
+                                    <ListItem disableGutters>
+                                        <ListItemText
+                                            primary="Closed At"
+                                            secondary={
+                                                fault.closedAt ? new Date(fault.closedAt).toLocaleString('en-GB') : 'N/A'
+                                            }
+                                        />
+                                    </ListItem>
+                                    {fault.resolvedBy && (
+                                        <ListItem disableGutters>
+                                            <ListItemText
+                                                primary="Resolved By"
+                                                secondary={fault.resolvedBy?.name || fault.resolvedBy?.email || fault.resolvedBy || 'Technician'}
+                                            />
+                                        </ListItem>
+                                    )}
+                                    {fault.resolutionDescription && (
+                                        <ListItem disableGutters sx={{ flexDirection: 'column', alignItems: 'flex-start', mt: 0.5 }}>
+                                            <ListItemText
+                                                primary="Resolution Notes & Work Performed"
+                                                secondary={fault.resolutionDescription}
+                                                secondaryTypographyProps={{
+                                                    sx: {
+                                                        whiteSpace: 'pre-wrap',
+                                                        color: 'text.primary',
+                                                        mt: 0.75,
+                                                        p: 1.5,
+                                                        borderRadius: 2,
+                                                        bgcolor: 'action.hover',
+                                                        border: '1px solid',
+                                                        borderColor: 'divider',
+                                                        width: '100%',
+                                                    },
+                                                }}
+                                            />
+                                        </ListItem>
+                                    )}
+                                </>
                             )}
 
                             {fault.photos?.length > 0 && (
@@ -176,29 +220,20 @@ export default function FaultDetailsDialog({
                         </List>
                     )}
                 </DialogContent>
-                <DialogActions sx={{ justifyContent: 'space-between', px: 3, py: 1.5 }}>
-                    {canManage && onDeleteFault ? (
-                        <Button
-                            color="error"
-                            variant="outlined"
-                            startIcon={<DeleteIcon />}
-                            onClick={() => setConfirmDeleteOpen(true)}
-                        >
-                            Delete
-                        </Button>
-                    ) : <Box />}
-
+                <DialogActions sx={{ justifyContent: 'flex-end', px: 3, py: 1.5 }}>
                     <Box display="flex" gap={1}>
                         {canManage && fault?.status === 'closed' && onReopenFault && (
                             <Button
-                                variant="outlined"
-                                color="secondary"
+                                variant="contained"
+                                color="warning"
+                                startIcon={<ReplayIcon />}
                                 onClick={() => {
                                     onClose();
                                     onReopenFault(fault);
                                 }}
+                                sx={{ fontWeight: 700 }}
                             >
-                                Reopen
+                                Reopen Fault
                             </Button>
                         )}
                         {canManage && fault?.status === 'open' && onCloseFault && (
@@ -218,6 +253,7 @@ export default function FaultDetailsDialog({
                             onClick={onClose}
                             variant="outlined"
                             color="inherit"
+                            startIcon={<CloseIcon />}
                             sx={{
                                 color: 'text.secondary',
                                 borderColor: 'divider',
@@ -234,17 +270,6 @@ export default function FaultDetailsDialog({
                     </Box>
                 </DialogActions>
             </Dialog>
-
-            <ConfirmDialog
-                open={confirmDeleteOpen}
-                title="Confirm Delete"
-                message="Are you sure you want to delete this fault?"
-                confirmText="Delete"
-                cancelText="Cancel"
-                confirmColor="error"
-                onConfirm={handleConfirmDelete}
-                onCancel={() => setConfirmDeleteOpen(false)}
-            />
 
             {/* In-App Image Viewer Dialog */}
             <ImageViewerDialog

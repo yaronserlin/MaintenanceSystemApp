@@ -9,7 +9,11 @@ import { alpha } from '@mui/material/styles';
 
 const PAGE_TO_PATH = (page) => {
     const lower = page.toLowerCase();
-    if (lower === 'faults' || lower === 'my faults') return '/dashboard';
+    if (lower === 'dashboard') return '/dashboard';
+    if (lower === 'my reports' || lower === 'reports' || lower === 'my faults' || lower === 'faults') return '/my-reports';
+    if (lower === 'manuals' || lower === 'equipment manuals' || lower === 'books') return '/manuals';
+    if (lower === 'equipment' || lower === 'tools') return '/equipment';
+    if (lower === 'admin') return '/admin';
     return `/${lower}`;
 };
 

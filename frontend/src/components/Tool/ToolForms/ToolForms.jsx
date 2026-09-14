@@ -43,7 +43,7 @@ function ToolFormFields({ values, onChange }) {
 }
 
 // Create Tool Form Component
-export function CreateToolForm({ onSubmit }) {
+export function CreateToolForm({ onSubmit, onCancel }) {
     const [values, setValues] = useState({
         name: '',
         serialNumber: '',
@@ -64,12 +64,16 @@ export function CreateToolForm({ onSubmit }) {
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit} p={2} maxWidth={600}>
-
+        <Box component="form" onSubmit={handleSubmit} p={1} maxWidth={600}>
             <ToolFormFields values={values} onChange={handleChange} />
-            <Box mt={3}>
-                <Button type="submit" variant="contained">
-                    Create
+            <Box mt={3} display="flex" justifyContent="flex-end" alignItems="center" gap={1.5}>
+                {onCancel && (
+                    <Button variant="outlined" onClick={onCancel}>
+                        Cancel
+                    </Button>
+                )}
+                <Button type="submit" variant="contained" color="primary">
+                    Create Equipment
                 </Button>
             </Box>
         </Box>
@@ -77,7 +81,7 @@ export function CreateToolForm({ onSubmit }) {
 }
 
 // Update Tool Form Component
-export function UpdateToolForm({ initialData = {}, onSubmit }) {
+export function UpdateToolForm({ initialData = {}, onSubmit, onCancel }) {
     const [values, setValues] = useState({
         name: '',
         serialNumber: '',
@@ -110,11 +114,16 @@ export function UpdateToolForm({ initialData = {}, onSubmit }) {
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit} p={2} maxWidth={600}>
+        <Box component="form" onSubmit={handleSubmit} p={1} maxWidth={600}>
             <ToolFormFields values={values} onChange={handleChange} />
-            <Box mt={3}>
-                <Button type="submit" variant="contained">
-                    Update
+            <Box mt={3} display="flex" justifyContent="flex-end" alignItems="center" gap={1.5}>
+                {onCancel && (
+                    <Button variant="outlined" onClick={onCancel}>
+                        Cancel
+                    </Button>
+                )}
+                <Button type="submit" variant="contained" color="primary">
+                    Update Equipment
                 </Button>
             </Box>
         </Box>

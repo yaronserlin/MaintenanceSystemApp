@@ -15,7 +15,7 @@ export function FaultProvider({ children }) {
     const [error, setError] = useState(null);
 
     const fetchFaults = useCallback(async () => {
-        if (!user) return;
+        if (!user || user.mustChangePassword) return;
         setLoading(true);
         setError(null);
         try {
@@ -30,7 +30,7 @@ export function FaultProvider({ children }) {
     }, [user, notify]);
 
     useEffect(() => {
-        if (user) {
+        if (user && !user.mustChangePassword) {
             fetchFaults();
         } else {
             setFaults([]);

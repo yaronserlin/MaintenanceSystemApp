@@ -1,6 +1,7 @@
 // controllers/maintenanceController.js
 const Maintenance = require('../models/Maintenance');
 const Tool = require('../models/Tool');
+const { syncEquipmentEngineHours } = require('../utils/equipmentEngineHours');
 
 exports.getAllMaintenance = async (req, res, next) => {
     try {
@@ -66,7 +67,7 @@ exports.createMaintenance = async (req, res, next) => {
             return res.status(400).json({ message: 'No data provided' });
         }
 
-        const { tool: toolId, details, date } = req.body;
+        const { tool: toolId, details, date, engineHours } = req.body;
 
         if (!details || typeof details !== 'string' || details.trim().length === 0) {
             return res.status(400).json({ message: 'Maintenance details are required' });
@@ -81,16 +82,27 @@ exports.createMaintenance = async (req, res, next) => {
             return res.status(400).json({ message: 'Referenced tool does not exist in your organization' });
         }
 
-        const maintenance = await Maintenance.create({
+        const parsedHours = engineHours !== undefined && engineHours !== '' && engineHours !== null ? parseFloat(engineHours) : null;
+        const validHours = parsedHours !== null && !isNaN(parsedHours) && parsedHours >= 0 ? parsedHours : null;
+
+        const maintenancePayload = {
             tool: tool._id,
             mechanic: req.user.userId,
             details: details.trim(),
             date: date ? new Date(date) : new Date(),
             companyId: req.user.companyId,
-        });
+        };
+        if (validHours !== null) {
+            maintenancePayload.engineHours = validHours;
+        }
+
+        const maintenance = await Maintenance.create(maintenancePayload);
+
+        // Update equipment engine hours to highest reading across resolved faults or services
+        await syncEquipmentEngineHours(tool._id, req.user.companyId, validHours);
 
         const populated = await Maintenance.findById(maintenance._id)
-            .populate('tool', 'name serialNumber model')
+            .populate('tool', 'name serialNumber model currentEngineHours')
             .populate('mechanic', 'name email');
 
         res.status(201).json(populated);
@@ -108,6 +120,10 @@ exports.deleteMaintenance = async (req, res, next) => {
 
         if (!record) {
             return res.status(404).json({ message: 'Maintenance record not found' });
+        }
+
+        if (record.tool) {
+            await syncEquipmentEngineHours(record.tool, req.user.companyId);
         }
 
         res.json({ message: 'Maintenance record deleted successfully' });

@@ -35,7 +35,25 @@ exports.verifyToken = async (req, res, next) => {
             role: user.role,
             companyId: user.companyId._id,
             company: user.companyId,
+            mustChangePassword: Boolean(user.mustChangePassword),
         };
+
+        if (user.mustChangePassword) {
+            const rawPath = req.originalUrl || req.url || '';
+            const pathWithoutQuery = rawPath.split('?')[0];
+            const isPasswordChangeAllowed =
+                pathWithoutQuery.endsWith('/auth/me/change-password') ||
+                pathWithoutQuery.endsWith('/auth/logout') ||
+                (pathWithoutQuery.endsWith('/auth/me') && req.method === 'GET');
+
+            if (!isPasswordChangeAllowed) {
+                return res.status(403).json({
+                    message: 'Password change required before accessing system resources',
+                    code: 'PASSWORD_CHANGE_REQUIRED',
+                    mustChangePassword: true,
+                });
+            }
+        }
 
         next();
     } catch (err) {

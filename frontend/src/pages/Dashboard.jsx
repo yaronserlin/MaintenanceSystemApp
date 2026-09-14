@@ -38,6 +38,8 @@ import {
 
 import { useAuth } from '../contexts/AuthContext';
 import { useNotify } from '../contexts/NotificationContext';
+import { useEquipment } from '../contexts/EquipmentContext';
+import { useFault } from '../contexts/FaultContext';
 import apiClient from '../services/apiClient';
 import equipmentService from '../services/equipmentService';
 import faultService from '../services/faultsService';
@@ -205,6 +207,8 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const notify = useNotify();
+    const { fetchEquipment } = useEquipment();
+    const { fetchFaults } = useFault();
 
     const [stats, setStats]           = useState({ total: 0, open: 0, closed: 0, fleetTotal: 0, fleetOperational: 0 });
     const [allFaultsList, setAllFaultsList] = useState([]);
@@ -217,6 +221,7 @@ export default function Dashboard() {
     const [faultToClose, setFaultToClose] = useState(null);
 
     const fetchData = useCallback(async () => {
+        if (!user || user.mustChangePassword) return;
         try {
             const [faultsRes, equipmentRes] = await Promise.all([
                 apiClient.get('/faults'),
@@ -243,7 +248,7 @@ export default function Dashboard() {
         } finally {
             setLoading(false);
         }
-    }, [notify]);
+    }, [notify, user]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -295,23 +300,38 @@ export default function Dashboard() {
     const operatorClosedCount = useMemo(() => operatorFaults.filter(f => f.status === 'closed').length, [operatorFaults]);
 
     const handleCreateFault = async (values) => {
+        if (!values?.tool) {
+            notify.error('Please select an equipment to report a fault for');
+            return;
+        }
         try {
             await faultService.create({ ...values, operator: user?.id || user?._id });
             notify.success('Fault reported successfully');
             setCreateDialogOpen(false);
-            fetchData();
+            await Promise.all([
+                fetchData(),
+                fetchEquipment ? fetchEquipment() : Promise.resolve(),
+                fetchFaults ? fetchFaults() : Promise.resolve(),
+            ]);
         } catch (err) {
             notify.error(err.response?.data?.message || 'Failed to report fault');
         }
     };
 
-    const handleConfirmCloseFault = async (fault, engineHours) => {
+    const handleConfirmCloseFault = async (fault, closeData) => {
         try {
-            await apiClient.patch(`/faults/${fault._id}/close`, { engineHours });
+            const payload = typeof closeData === 'object' && closeData !== null
+                ? closeData
+                : { engineHours: closeData };
+            await apiClient.patch(`/faults/${fault._id}/close`, payload);
             setCloseDialogOpen(false);
             setFaultToClose(null);
             notify.success('Fault marked as resolved');
-            fetchData();
+            await Promise.all([
+                fetchData(),
+                fetchEquipment ? fetchEquipment() : Promise.resolve(),
+                fetchFaults ? fetchFaults() : Promise.resolve(),
+            ]);
         } catch (err) {
             notify.error('Failed to close fault');
         }
@@ -321,7 +341,11 @@ export default function Dashboard() {
         try {
             await apiClient.patch(`/faults/${fault._id}/reopen`);
             notify.success('Fault reopened');
-            fetchData();
+            await Promise.all([
+                fetchData(),
+                fetchEquipment ? fetchEquipment() : Promise.resolve(),
+                fetchFaults ? fetchFaults() : Promise.resolve(),
+            ]);
         } catch (err) {
             notify.error('Failed to reopen fault');
         }
@@ -331,7 +355,11 @@ export default function Dashboard() {
         try {
             await apiClient.delete(`/faults/${fault._id}`);
             notify.success('Fault deleted');
-            fetchData();
+            await Promise.all([
+                fetchData(),
+                fetchEquipment ? fetchEquipment() : Promise.resolve(),
+                fetchFaults ? fetchFaults() : Promise.resolve(),
+            ]);
         } catch (err) {
             notify.error('Failed to delete fault');
         }
@@ -346,94 +374,121 @@ export default function Dashboard() {
     const hasFilters = statusFilter !== 'all' || searchQuery.trim();
 
     // ─── OPERATOR VIEW ───────────────────────────────────────────────────────
+    // ─── OPERATOR VIEW ───────────────────────────────────────────────────────
     if (isOperator) {
+        const recentFaults = [...operatorFaults]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 4);
+
         return (
             <Container maxWidth="md" sx={{ mt: 3, mb: 6 }}>
-                {/* CTA Hero Banner */}
-                <Box
+                {/* Centered Hero CTA */}
+                <Paper
+                    variant="outlined"
                     sx={{
-                        p: { xs: 3, sm: 4 },
-                        mb: 3.5,
+                        p: { xs: 3, sm: 5 },
+                        mb: 4,
                         borderRadius: 3,
-                        background: isDark
-                            ? 'linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%)'
-                            : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-                        color: '#FFFFFF',
+                        textAlign: 'center',
                         display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
-                        justifyContent: 'space-between',
-                        alignItems: { xs: 'flex-start', sm: 'center' },
-                        gap: 2.5,
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderLeft: '5px solid #2563EB',
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(37,99,235,0.06)' : 'rgba(37,99,235,0.03)',
                     }}
                 >
-                    <Box>
-                        <Typography variant="h5" fontWeight={800} gutterBottom sx={{ color: '#FFFFFF', lineHeight: 1.2 }}>
-                            Welcome, {user?.name || 'Operator'}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                            Report machine issues and track your reported tickets.
-                        </Typography>
+                    <Box
+                        sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: '50%',
+                            bgcolor: 'primary.main',
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mb: 2,
+                            boxShadow: '0 8px 16px rgba(37,99,235,0.25)',
+                        }}
+                    >
+                        <BugReportIcon sx={{ fontSize: 36 }} />
                     </Box>
+                    <Typography variant="h4" fontWeight={800} gutterBottom letterSpacing="-0.02em">
+                        Need to Report an Issue?
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mb: 3.5 }}>
+                        Report equipment malfunctions, leaks, or maintenance alerts so our technical team can inspect and resolve them.
+                    </Typography>
                     <Button
                         variant="contained"
+                        color="primary"
                         size="large"
                         startIcon={<AddIcon />}
                         onClick={() => setCreateDialogOpen(true)}
                         sx={{
-                            bgcolor: '#FFFFFF',
-                            color: '#1D4ED8',
+                            py: 1.5,
+                            px: 4,
+                            fontSize: '1rem',
                             fontWeight: 700,
-                            px: 3,
-                            width: { xs: '100%', sm: 'auto' },
-                            flexShrink: 0,
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                            borderRadius: 2,
+                            boxShadow: '0 4px 14px rgba(37,99,235,0.3)',
                         }}
                     >
-                        Report a Fault
+                        Report a Fault Now
                     </Button>
+                </Paper>
+
+                {/* Recent Reports Preview */}
+                <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5} mb={2}>
+                    <Box>
+                        <Typography variant="h6" fontWeight={700}>
+                            Recent Reports Preview
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Your latest logged tickets
+                        </Typography>
+                    </Box>
+                    <Box display="flex" gap={1} alignItems="center">
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            size="small"
+                            startIcon={<AddIcon />}
+                            onClick={() => setCreateDialogOpen(true)}
+                            sx={{ fontWeight: 700 }}
+                        >
+                            Report Fault
+                        </Button>
+                        {operatorFaults.length > 0 && (
+                            <Button
+                                variant="text"
+                                color="primary"
+                                onClick={() => navigate('/my-reports')}
+                                sx={{ fontWeight: 700 }}
+                            >
+                                View All ({operatorFaults.length}) →
+                            </Button>
+                        )}
+                    </Box>
                 </Box>
 
-                {/* Operator Stats */}
-                <Grid container spacing={2} sx={{ mb: 4 }}>
-                    {[
-                        { label: 'MY REPORTS',  value: operatorFaults.length,  accent: '#2563EB', icon: <BugReportIcon sx={{ fontSize: 18 }} />, bg: alpha('#2563EB', 0.1), caption: 'Total faults reported' },
-                        { label: 'OPEN',         value: operatorOpenCount,       accent: '#DC2626', icon: <WarningAmberIcon sx={{ fontSize: 18 }} />, bg: alpha('#DC2626', 0.1), caption: 'Pending resolution' },
-                        { label: 'RESOLVED',     value: operatorClosedCount,     accent: '#16A34A', icon: <CheckCircleIcon sx={{ fontSize: 18 }} />, bg: alpha('#16A34A', 0.1), caption: 'Successfully closed' },
-                    ].map(k => (
-                        <Grid size={{ xs: 12, sm: 4 }} key={k.label}>
-                            <KpiCard
-                                label={k.label}
-                                value={k.value}
-                                caption={k.caption}
-                                accentColor={k.accent}
-                                icon={k.icon}
-                                iconBg={k.bg}
-                            />
-                        </Grid>
-                    ))}
-                </Grid>
-
-                {/* Faults Section */}
-                <Typography variant="h6" fontWeight={700} mb={2}>My Reported Faults</Typography>
-                <FilterBar
-                    total={operatorFaults.length}
-                    openCount={operatorOpenCount}
-                    closedCount={operatorClosedCount}
-                    statusFilter={statusFilter}
-                    setStatusFilter={setStatusFilter}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    placeholder="Search my faults..."
-                />
-
-                {filteredFaults.length === 0 ? (
-                    <FaultEmptyState
-                        hasFilters={hasFilters}
-                        onClear={() => { setStatusFilter('all'); setSearchQuery(''); }}
-                    />
+                {recentFaults.length === 0 ? (
+                    <Paper
+                        variant="outlined"
+                        sx={{ p: 4, textAlign: 'center', borderRadius: 3, mb: 4 }}
+                    >
+                        <CheckCircleIcon color="success" sx={{ fontSize: 40, mb: 1 }} />
+                        <Typography variant="subtitle1" fontWeight={700}>
+                            No faults reported
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            You currently have no active or historical tickets recorded.
+                        </Typography>
+                    </Paper>
                 ) : (
                     <Grid container spacing={2} sx={{ mb: 4 }}>
-                        {filteredFaults.map(fault => (
+                        {recentFaults.map(fault => (
                             <Grid size={{ xs: 12, sm: 6 }} key={fault._id}>
                                 <FaultCard fault={fault} onClick={f => setSelectedFault(f)} />
                             </Grid>
@@ -441,29 +496,71 @@ export default function Dashboard() {
                     </Grid>
                 )}
 
-                {/* Account quick-link */}
-                <Paper
-                    variant="outlined"
-                    sx={{
-                        p: 2.5,
-                        borderRadius: 3,
-                        display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
-                        justifyContent: 'space-between',
-                        alignItems: { xs: 'flex-start', sm: 'center' },
-                        gap: 2,
-                    }}
-                >
-                    <Box>
-                        <Typography variant="subtitle1" fontWeight={700}>Account & Details</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Update your name, email, profile photo, or password.
-                        </Typography>
-                    </Box>
-                    <Button variant="outlined" onClick={() => navigate('/account')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                        Change Details & Password
-                    </Button>
-                </Paper>
+                {/* Secondary Quick Access Cards */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 3,
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                                borderLeft: '4px solid #2563EB',
+                            }}
+                        >
+                            <Box mb={2}>
+                                <Typography variant="subtitle1" fontWeight={700}>
+                                    Equipment Manuals
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    Browse operating books and manufacturer documentation for all machines.
+                                </Typography>
+                            </Box>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                onClick={() => navigate('/manuals')}
+                                sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
+                            >
+                                Browse Manuals →
+                            </Button>
+                        </Paper>
+                    </Grid>
+
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 3,
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                                borderLeft: '4px solid #475569',
+                            }}
+                        >
+                            <Box mb={2}>
+                                <Typography variant="subtitle1" fontWeight={700}>
+                                    Account Settings
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    Update your personal details, profile picture, or password.
+                                </Typography>
+                            </Box>
+                            <Button
+                                variant="outlined"
+                                onClick={() => navigate('/account')}
+                                sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
+                            >
+                                Manage Account →
+                            </Button>
+                        </Paper>
+                    </Grid>
+                </Grid>
 
                 {/* Dialogs */}
                 {selectedFault && (
@@ -654,8 +751,18 @@ export default function Dashboard() {
             </Card>
 
             {/* Recent Faults Section */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5} mb={2}>
                 <Typography variant="h6" fontWeight={700}>Recent Fault Reports</Typography>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={() => setCreateDialogOpen(true)}
+                    sx={{ fontWeight: 700 }}
+                >
+                    Report Fault
+                </Button>
             </Box>
 
             <FilterBar

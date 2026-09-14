@@ -11,6 +11,11 @@ const MaintenanceSchema = new mongoose.Schema({
     tool: { type: mongoose.Schema.Types.ObjectId, ref: 'Tool', required: true },
     mechanic: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     details: { type: String, required: true, trim: true },
+    engineHours: { type: Number, min: 0 },
+    checklist: [{
+        text: { type: String, trim: true },
+        done: { type: Boolean, default: true },
+    }],
     date: { type: Date, default: Date.now },
 }, { timestamps: true });
 

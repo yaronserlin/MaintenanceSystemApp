@@ -91,6 +91,7 @@ exports.register = async (req, res, next) => {
                     email: user.email,
                     role: user.role,
                     avatar: user.avatar || null,
+                    mustChangePassword: Boolean(user.mustChangePassword),
                     company: {
                         id: company._id,
                         _id: company._id,
@@ -151,6 +152,7 @@ exports.login = async (req, res, next) => {
                 email: user.email,
                 role: user.role,
                 avatar: user.avatar || null,
+                mustChangePassword: Boolean(user.mustChangePassword),
                 company: {
                     id: user.companyId._id,
                     _id: user.companyId._id,
@@ -184,6 +186,7 @@ exports.me = async (req, res, next) => {
             email: user.email,
             role: user.role,
             avatar: user.avatar || null,
+            mustChangePassword: Boolean(user.mustChangePassword),
             company: user.companyId,
         });
     } catch (err) {
@@ -194,7 +197,7 @@ exports.me = async (req, res, next) => {
 // Update profile
 exports.updateProfile = async (req, res, next) => {
     try {
-        const { name, email } = req.body;
+        const { name, email, currentPassword } = req.body;
         if (!name || typeof name !== 'string' || name.trim().length < 2) {
             return res.status(400).json({ message: 'Name must be at least 2 characters' });
         }
@@ -203,28 +206,39 @@ exports.updateProfile = async (req, res, next) => {
         }
 
         const normalizedEmail = email.trim().toLowerCase();
-        const existing = await User.findOne({ email: normalizedEmail });
-        if (existing && existing._id.toString() !== req.user.userId) {
-            return res.status(400).json({ message: 'Email already in use' });
-        }
-
-        const user = await User.findByIdAndUpdate(
-            req.user.userId,
-            { name: name.trim(), email: normalizedEmail },
-            { new: true, runValidators: true }
-        );
-
-        if (!user) {
+        const currentUser = await User.findById(req.user.userId);
+        if (!currentUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        // Verification requirement: changing email requires current password check
+        if (normalizedEmail !== currentUser.email) {
+            if (!currentPassword || typeof currentPassword !== 'string') {
+                return res.status(400).json({ message: 'Current password is required to change your email address' });
+            }
+            const passwordMatches = await bcrypt.compare(currentPassword, currentUser.password);
+            if (!passwordMatches) {
+                return res.status(400).json({ message: 'Current password is incorrect' });
+            }
+
+            const existing = await User.findOne({ email: normalizedEmail });
+            if (existing && existing._id.toString() !== req.user.userId) {
+                return res.status(400).json({ message: 'Email already in use' });
+            }
+        }
+
+        currentUser.name = name.trim();
+        currentUser.email = normalizedEmail;
+        await currentUser.save();
+
         res.json({
-            id: user._id,
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            avatar: user.avatar || null,
+            id: currentUser._id,
+            _id: currentUser._id,
+            name: currentUser.name,
+            email: currentUser.email,
+            role: currentUser.role,
+            avatar: currentUser.avatar || null,
+            mustChangePassword: Boolean(currentUser.mustChangePassword),
         });
     } catch (err) {
         next(err);
@@ -267,27 +281,34 @@ exports.uploadAvatar = async (req, res, next) => {
 exports.changePassword = async (req, res, next) => {
     try {
         const { currentPassword, newPassword } = req.body;
-        if (!currentPassword || typeof currentPassword !== 'string' || !newPassword || typeof newPassword !== 'string') {
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!newPassword || typeof newPassword !== 'string' || (!user.mustChangePassword && (!currentPassword || typeof currentPassword !== 'string'))) {
             return res.status(400).json({ message: 'Current and new password are required' });
         }
         if (newPassword.length < 6) {
             return res.status(400).json({ message: 'New password must be at least 6 characters' });
         }
 
-        const user = await User.findById(req.user.userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const match = await bcrypt.compare(currentPassword, user.password);
-        if (!match) {
-            return res.status(400).json({ message: 'Current password incorrect' });
+        // If user is not flagged for mustChangePassword, or if currentPassword was provided, verify it.
+        if (!user.mustChangePassword || currentPassword) {
+            if (!currentPassword || typeof currentPassword !== 'string') {
+                return res.status(400).json({ message: 'Current and new password are required' });
+            }
+            const match = await bcrypt.compare(currentPassword, user.password);
+            if (!match) {
+                return res.status(400).json({ message: 'Current password incorrect' });
+            }
         }
 
         user.password = await bcrypt.hash(newPassword, 10);
+        user.mustChangePassword = false;
         await user.save();
 
-        res.json({ message: 'Password changed successfully' });
+        res.json({ message: 'Password changed successfully', mustChangePassword: false });
     } catch (err) {
         next(err);
     }

@@ -49,7 +49,11 @@ export const AuthProvider = ({ children }) => {
             const { data } = await apiClient.post('/auth/login', { email, password });
             setUser(data.user);
             setUserId(data.user.id || data.user._id);
-            navigate('/dashboard');
+            if (data.user?.mustChangePassword) {
+                navigate('/force-password-change', { replace: true });
+            } else {
+                navigate('/dashboard');
+            }
             return data.user;
         } catch (error) {
             if (error.response && error.response.data) {
@@ -74,7 +78,11 @@ export const AuthProvider = ({ children }) => {
             });
             setUser(data.user);
             setUserId(data.user.id || data.user._id);
-            navigate('/dashboard');
+            if (data.user?.mustChangePassword) {
+                navigate('/force-password-change', { replace: true });
+            } else {
+                navigate('/dashboard');
+            }
             return data.user;
         } catch (error) {
             if (error.response && error.response.data) {

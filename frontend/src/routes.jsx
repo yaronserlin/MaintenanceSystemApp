@@ -1,6 +1,6 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Box } from '@mui/material';
+import { Box, LinearProgress } from '@mui/material';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -22,9 +22,46 @@ const EquipmentSchedulePage = lazy(() => import('./pages/EquipmentSchedulePage')
 const ProfilePage          = lazy(() => import('./pages/ProfilePage'));
 const AccountPage          = lazy(() => import('./pages/AccountPage'));
 const AdminDashboard       = lazy(() => import('./pages/AdminDashboard'));
+const OperatorReportsPage  = lazy(() => import('./pages/OperatorReportsPage'));
+const EquipmentBooksPage   = lazy(() => import('./pages/EquipmentBooksPage'));
+const ForcePasswordChangePage = lazy(() => import('./pages/ForcePasswordChangePage'));
+import ForcePasswordChangeDialog from './components/Auth/ForcePasswordChangeDialog';
+
+// Preload route chunks in the background to avoid page transition freezes
+const preloadRouteChunks = () => {
+    import('./pages/Dashboard');
+    import('./pages/ToolPage');
+    import('./pages/ToolsPage');
+    import('./pages/EquipmentSchedulePage');
+    import('./pages/ProfilePage');
+    import('./pages/AccountPage');
+    import('./pages/AdminDashboard');
+    import('./pages/OperatorReportsPage');
+    import('./pages/EquipmentBooksPage');
+};
+
+// Top-level route fallback with immediate progress feedback
+function RouteFallback() {
+    return (
+        <Box sx={{ width: '100%' }}>
+            <LinearProgress sx={{ height: 3 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+                <LoadingComponent message="Loading page..." />
+            </Box>
+        </Box>
+    );
+}
 
 // Pages that use a full-screen layout (no Navbar)
-const HIDE_NAVBAR_PATHS = ['/login'];
+const HIDE_NAVBAR_PATHS = ['/login', '/force-password-change'];
+
+function RequirePasswordChange({ children }) {
+    const { user, loading } = useAuth();
+    if (loading) return <LoadingComponent />;
+    if (!user) return <Navigate to="/login" replace />;
+    if (!user.mustChangePassword) return <Navigate to="/dashboard" replace />;
+    return children;
+}
 
 function RequireStaff({ children }) {
     const { user } = useAuth();
@@ -36,22 +73,45 @@ function RequireStaff({ children }) {
 
 function AppLayout({ pages }) {
     const location  = useLocation();
+    const { user } = useAuth();
     const hideNavbar = HIDE_NAVBAR_PATHS.some(p => location.pathname === p);
+
+    // Preload chunks on idle once authenticated
+    useEffect(() => {
+        if (user && !user.mustChangePassword) {
+            if ('requestIdleCallback' in window) {
+                const handle = window.requestIdleCallback(() => preloadRouteChunks());
+                return () => window.cancelIdleCallback(handle);
+            } else {
+                const timer = setTimeout(() => preloadRouteChunks(), 150);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [user]);
 
     return (
         <>
             {!hideNavbar && <Navbar pages={pages} />}
+            {!hideNavbar && <ForcePasswordChangeDialog />}
             <Box
                 component="main"
                 sx={{ flexGrow: 1, minHeight: hideNavbar ? '100dvh' : 'calc(100vh - 64px)' }}
             >
-                <Suspense fallback={<LoadingComponent />}>
+                <Suspense fallback={<RouteFallback />}>
                     <Routes>
                         {/* Default redirect */}
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                         {/* Public routes */}
                         <Route path="/login" element={<Login />} />
+                        <Route
+                            path="/force-password-change"
+                            element={
+                                <RequirePasswordChange>
+                                    <ForcePasswordChangePage />
+                                </RequirePasswordChange>
+                            }
+                        />
 
                         {/* Protected routes */}
                         <Route
@@ -148,6 +208,23 @@ function AppLayout({ pages }) {
                                 </ProtectedRoute>
                             }
                         />
+                        <Route
+                            path="/my-reports"
+                            element={
+                                <ProtectedRoute>
+                                    <OperatorReportsPage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/manuals"
+                            element={
+                                <ProtectedRoute>
+                                    <EquipmentBooksPage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route path="/books" element={<Navigate to="/manuals" replace />} />
 
                         {/* Fallback */}
                         <Route path="*" element={<NotFound />} />

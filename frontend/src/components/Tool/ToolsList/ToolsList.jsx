@@ -153,7 +153,7 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                 const booksCount = tool.books?.length || 0;
 
                 return (
-                    <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={tool._id}>
+                    <Grid size={{ xs: 12, sm: 12, md: 6, lg: 4 }} key={tool._id}>
                         <Card
                             sx={{
                                 display: 'flex',
@@ -176,8 +176,8 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                             >
                                 <CardContent sx={{ pb: 1 }}>
                                     {/* Header with Unit Badge & Status */}
-                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1} mb={1.5}>
-                                        <Box display="flex" alignItems="center" gap={1.25}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={1} mb={1.5}>
+                                        <Box display="flex" alignItems="center" gap={1.25} sx={{ minWidth: 0, flex: '1 1 auto' }}>
                                             <Box
                                                 sx={{
                                                     display: 'flex',
@@ -195,8 +195,8 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                             >
                                                 <PrecisionManufacturingIcon fontSize="medium" />
                                             </Box>
-                                            <Box>
-                                                <Typography variant="h6" fontWeight={700} lineHeight={1.2}>
+                                            <Box sx={{ minWidth: 0 }}>
+                                                <Typography variant="h6" fontWeight={700} lineHeight={1.2} sx={{ wordBreak: 'break-word' }}>
                                                     {tool.name}
                                                 </Typography>
                                                 {tool.localSerialNumber && (
@@ -212,7 +212,7 @@ export default function ToolsList({ tools = [], viewMode = 'grid', openFaultsByT
                                             label={hasOpenFaults ? `${openFaultCount} Fault${openFaultCount > 1 ? 's' : ''}` : 'Ready'}
                                             size="small"
                                             color={hasOpenFaults ? 'error' : 'success'}
-                                            sx={{ fontWeight: 700, fontSize: '0.72rem' }}
+                                            sx={{ fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}
                                         />
                                     </Box>
 

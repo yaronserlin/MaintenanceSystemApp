@@ -101,19 +101,9 @@ function UserForm({ initialValues, onSubmit, submitLabel = 'Submit' }) {
                 required={submitLabel.toLowerCase() === 'create'}
             />
 
-            <Input.Select
-                name="role"
-                label="Role"
-                value={values.role}
-                onChange={handleFieldChange}
-                error={Boolean(errors.role)}
-                helperText={errors.role}
-                options={[
-                    { value: 'operator', label: 'Operator' },
-                    { value: 'mechanic', label: 'Mechanic' },
-                    { value: 'admin', label: 'Admin' },
-                ]}
-            />
+            <Alert severity="info" sx={{ fontSize: '0.8rem', py: 0.5 }}>
+                New accounts are created as <strong>Operators</strong> by default. You can update their role anytime from the User Management table.
+            </Alert>
 
             <Button
                 type="submit"

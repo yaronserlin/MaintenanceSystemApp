@@ -54,6 +54,8 @@ export default function AccountPage() {
     const [showCurrentPwd, setShowCurrentPwd] = useState(false);
     const [showNewPwd, setShowNewPwd] = useState(false);
     const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+    const [emailPassword, setEmailPassword] = useState('');
+    const [showEmailPassword, setShowEmailPassword] = useState(false);
 
     useEffect(() => {
         if (user) setForm({ name: user.name || '', email: user.email || '' });
@@ -88,15 +90,29 @@ export default function AccountPage() {
         }
     };
 
+    const isEmailChanged = Boolean(
+        user?.email &&
+        form.email.trim().toLowerCase() !== user.email.trim().toLowerCase()
+    );
+
     const handleUpdateProfile = async (e) => {
         if (e) e.preventDefault();
+        if (isEmailChanged && !emailPassword) {
+            setProfileError('Current password is required to confirm your email address change');
+            return;
+        }
+
         setLoadingProfile(true);
         setProfileMsg(null);
         setProfileError(null);
         try {
-            const { data } = await apiClient.put('/auth/me', form);
+            const { data } = await apiClient.put('/auth/me', {
+                ...form,
+                currentPassword: isEmailChanged ? emailPassword : undefined,
+            });
             setUser(prev => ({ ...prev, ...data }));
             setProfileMsg('Profile updated successfully');
+            setEmailPassword('');
         } catch (err) {
             setProfileError(err.response?.data?.message || 'Update failed');
         } finally {
@@ -199,22 +215,40 @@ export default function AccountPage() {
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
                         JPG, PNG, GIF up to 5MB
                     </Typography>
-                    <Button
-                        component="label"
-                        variant="outlined"
-                        size="small"
-                        color="primary"
-                        startIcon={<PhotoCameraIcon />}
-                        disabled={avatarLoading}
-                        sx={{ fontWeight: 600 }}
-                    >
-                        Upload Photo
-                        <VisuallyHiddenInput
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarChange}
-                        />
-                    </Button>
+                    <Box display="flex" gap={1.25} flexWrap="wrap">
+                        <Button
+                            component="label"
+                            variant="contained"
+                            size="small"
+                            color="primary"
+                            startIcon={<PhotoCameraIcon />}
+                            disabled={avatarLoading}
+                            sx={{ fontWeight: 600 }}
+                        >
+                            Take Photo
+                            <VisuallyHiddenInput
+                                type="file"
+                                accept="image/*"
+                                capture="user"
+                                onChange={handleAvatarChange}
+                            />
+                        </Button>
+                        <Button
+                            component="label"
+                            variant="outlined"
+                            size="small"
+                            color="primary"
+                            disabled={avatarLoading}
+                            sx={{ fontWeight: 600 }}
+                        >
+                            Upload Photo
+                            <VisuallyHiddenInput
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarChange}
+                            />
+                        </Button>
+                    </Box>
                 </Box>
             </Paper>
 
@@ -258,9 +292,37 @@ export default function AccountPage() {
                         type="email"
                         value={form.email}
                         onChange={handleChange}
-                        sx={{ mb: 2.5 }}
+                        sx={{ mb: isEmailChanged ? 2 : 2.5 }}
                         required
                     />
+
+                    {isEmailChanged && (
+                        <TextField
+                            fullWidth
+                            label="Current Password"
+                            name="emailPassword"
+                            type={showEmailPassword ? 'text' : 'password'}
+                            value={emailPassword}
+                            onChange={(e) => setEmailPassword(e.target.value)}
+                            helperText="Your current password is required to verify email address change"
+                            sx={{ mb: 2.5 }}
+                            required
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            onClick={() => setShowEmailPassword(prev => !prev)}
+                                            edge="end"
+                                            size="small"
+                                            aria-label="toggle current password visibility"
+                                        >
+                                            {showEmailPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    )}
                     <Button
                         type="submit"
                         variant="contained"

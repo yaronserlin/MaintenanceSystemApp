@@ -9,7 +9,7 @@ jest.mock('../src/components/LoginComponent/LoginForm', () => () => <div>LoginFo
 describe('LoginCard', () => {
     test('renders title and LoginForm', () => {
         render(<LoginCard />);
-        expect(screen.getByText('Login')).toBeInTheDocument();
+        expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
         expect(screen.getByText('LoginFormMock')).toBeInTheDocument();
     });
 });

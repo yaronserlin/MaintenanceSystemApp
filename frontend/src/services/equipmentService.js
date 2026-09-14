@@ -125,6 +125,22 @@ const equipmentService = {
         apiClient
             .delete(`/equipment/${id}/schedules/${scheduleId}/checklist/${itemId}`)
             .then(res => res.data),
+
+    /**
+     * Update in-progress service notes / state
+     */
+    updateScheduleProgress: async (id, scheduleId, payload) => {
+        try {
+            const res = await apiClient.patch(`/equipment/${id}/schedules/${scheduleId}/progress`, payload);
+            return res.data;
+        } catch (err) {
+            if (err.response?.status === 404 || err.response?.status === 405) {
+                const res = await apiClient.put(`/equipment/${id}/schedules/${scheduleId}/progress`, payload);
+                return res.data;
+            }
+            throw err;
+        }
+    },
 };
 
 export default equipmentService;

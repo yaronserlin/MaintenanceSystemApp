@@ -42,13 +42,15 @@ export default function CreateFaultDialog({ open, onClose, onSubmit, toolId, equ
                 </IconButton>
             </DialogTitle>
             <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
-                <CreateFaultForm
-                    onSubmit={onSubmit}
-                    toolId={activeEquipmentId}
-                    equipmentId={activeEquipmentId}
-                    formId="create-fault-modal-form"
-                    hideSubmitButton={true}
-                />
+                {open && (
+                    <CreateFaultForm
+                        onSubmit={onSubmit}
+                        toolId={activeEquipmentId}
+                        equipmentId={activeEquipmentId}
+                        formId="create-fault-modal-form"
+                        hideSubmitButton={true}
+                    />
+                )}
             </DialogContent>
             <DialogActions sx={{ p: 2, gap: 1 }}>
                 <Button onClick={onClose} color="inherit" variant="outlined">

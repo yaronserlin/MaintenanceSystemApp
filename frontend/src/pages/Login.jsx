@@ -9,7 +9,11 @@ function Login() {
 
     useEffect(() => {
         if (!loading && user) {
-            navigate('/dashboard', { replace: true });
+            if (user.mustChangePassword) {
+                navigate('/force-password-change', { replace: true });
+            } else {
+                navigate('/dashboard', { replace: true });
+            }
         }
     }, [user, loading, navigate]);
 

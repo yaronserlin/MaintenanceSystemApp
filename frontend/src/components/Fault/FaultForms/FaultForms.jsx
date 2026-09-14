@@ -12,12 +12,14 @@ import {
     MenuItem,
     Paper,
     alpha,
+    FormHelperText,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { useTool } from '../../../contexts/ToolContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -99,7 +101,9 @@ function FileThumbnailPreview({ file, onRemove }) {
 /**
  * Shared form fields for fault forms.
  */
-function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools = [], isEdit = false }) {
+function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools = [], isEdit = false, toolError = '' }) {
+    const { user } = useAuth();
+    const isOperator = user?.role === 'operator';
     const [isDragging, setIsDragging] = useState(false);
 
     const handleDragOver = (e) => {
@@ -126,21 +130,39 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
     return (
         <Box display="flex" flexDirection="column" gap={2.5}>
             {/* Equipment selector */}
-            <FormControl fullWidth required>
-                <InputLabel id="equipment-select-label">Equipment</InputLabel>
+            <FormControl fullWidth required error={Boolean(toolError)}>
                 <Select
-                    labelId="equipment-select-label"
-                    label="Equipment"
                     name="tool"
                     value={values.tool || ''}
                     onChange={onChange}
+                    displayEmpty
+                    inputProps={{ 'aria-label': 'Select Equipment' }}
+                    renderValue={(selected) => {
+                        if (!selected) {
+                            return (
+                                <Typography component="span" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                                    -- Select an equipment --
+                                </Typography>
+                            );
+                        }
+                        const found = tools.find(t => (t._id || t.id) === selected);
+                        return found
+                            ? `${found.name} ${found.localSerialNumber ? `(${found.localSerialNumber})` : (found.serialNumber ? `(${found.serialNumber})` : '')}`
+                            : selected;
+                    }}
                 >
+                    <MenuItem value="" disabled>
+                        <Typography component="span" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                            -- Select an equipment --
+                        </Typography>
+                    </MenuItem>
                     {tools.map(tool => (
-                        <MenuItem key={tool._id} value={tool._id}>
-                            {tool.name} {tool.localSerialNumber ? `(${tool.localSerialNumber})` : ''}
+                        <MenuItem key={tool._id || tool.id} value={tool._id || tool.id}>
+                            {tool.name} {tool.localSerialNumber ? `(${tool.localSerialNumber})` : (tool.serialNumber ? `(${tool.serialNumber})` : '')}
                         </MenuItem>
                     ))}
                 </Select>
+                {toolError && <FormHelperText error>{toolError}</FormHelperText>}
             </FormControl>
 
             {/* Fault code & Engine Hours in one responsive row */}
@@ -156,7 +178,7 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
                 />
 
                 <TextField
-                    label="Engine Hours (optional)"
+                    label="Engine Hours"
                     name="engineHours"
                     type="number"
                     fullWidth
@@ -199,15 +221,33 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
                     }}
                 >
                     <CloudUploadIcon sx={{ fontSize: 36, color: isDragging ? 'secondary.main' : 'text.secondary', mb: 0.5 }} />
-                    <Typography variant="body2" fontWeight={500}>
-                        Drag and drop photos here, or{' '}
+                    <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+                        Drag and drop photos here, or select an option:
+                    </Typography>
+                    <Box display="flex" justifyContent="center" alignItems="center" gap={1.5} flexWrap="wrap">
                         <Button
                             component="label"
-                            variant="text"
+                            variant="contained"
+                            color="primary"
                             size="small"
-                            sx={{ p: 0, minWidth: 0, verticalAlign: 'baseline', fontWeight: 600 }}
+                            startIcon={<PhotoCameraIcon />}
+                            sx={{ fontWeight: 600 }}
                         >
-                            browse
+                            Take Photo
+                            <VisuallyHiddenInput
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={onChange}
+                            />
+                        </Button>
+                        <Button
+                            component="label"
+                            variant="outlined"
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                        >
+                            Browse Files
                             <VisuallyHiddenInput
                                 type="file"
                                 accept="image/*"
@@ -215,8 +255,8 @@ function FaultFormFields({ values, onChange, onFilesAdded, onRemoveFile, tools =
                                 multiple
                             />
                         </Button>
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" display="block">
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
                         PNG, JPG, or WEBP up to 10MB each
                     </Typography>
                 </Paper>
@@ -276,7 +316,7 @@ export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'creat
     const activeEquipmentId = equipmentId || toolId;
     const { tools = [] } = useTool();
     const [values, setValues] = useState({
-        tool: activeEquipmentId || (tools.length > 0 ? tools[0]._id : ''),
+        tool: activeEquipmentId || '',
         code: '',
         engineHours: '',
         description: '',
@@ -284,12 +324,14 @@ export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'creat
         status: 'open',
         closedAt: '',
     });
+    const [toolError, setToolError] = useState('');
 
     useEffect(() => {
-        if (!values.tool && tools.length > 0) {
-            setValues(prev => ({ ...prev, tool: activeEquipmentId || tools[0]._id }));
+        if (activeEquipmentId) {
+            setValues(prev => ({ ...prev, tool: activeEquipmentId }));
+            setToolError('');
         }
-    }, [tools, activeEquipmentId, values.tool]);
+    }, [activeEquipmentId]);
 
     const handleChange = (e) => {
         if (e.target.type === 'file') {
@@ -300,6 +342,9 @@ export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'creat
             }));
         } else {
             const { name, value } = e.target;
+            if (name === 'tool' && value) {
+                setToolError('');
+            }
             setValues(prev => ({ ...prev, [name]: value }));
         }
     };
@@ -320,6 +365,11 @@ export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'creat
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (!values.tool) {
+            setToolError('Please select an equipment');
+            return;
+        }
+        setToolError('');
         onSubmit(values);
     };
 
@@ -331,6 +381,7 @@ export function CreateFaultForm({ onSubmit, toolId, equipmentId, formId = 'creat
                 onFilesAdded={handleFilesAdded}
                 onRemoveFile={handleRemoveFile}
                 tools={tools}
+                toolError={toolError}
             />
 
             {!hideSubmitButton && (

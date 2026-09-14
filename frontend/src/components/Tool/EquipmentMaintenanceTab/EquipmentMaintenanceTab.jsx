@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -20,15 +20,21 @@ import {
     ListItem,
     ListItemText,
     Divider,
+    Paper,
+    CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SpeedIcon from '@mui/icons-material/Speed';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ChecklistIcon from '@mui/icons-material/Checklist';
+import HistoryIcon from '@mui/icons-material/History';
+import PersonIcon from '@mui/icons-material/Person';
+import EngineeringIcon from '@mui/icons-material/Engineering';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotify } from '../../../contexts/NotificationContext';
 import equipmentService from '../../../services/equipmentService';
+import maintenanceService from '../../../services/maintenanceService';
 import ConfirmDialog from '../../ConfirmDialog/ConfirmDialog';
 
 export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) {
@@ -45,6 +51,11 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
 
     // Delete confirmation state
     const [deletingScheduleId, setDeletingScheduleId] = useState(null);
+
+    // Maintenance Logs state
+    const [maintenanceLogs, setMaintenanceLogs] = useState([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+    const [deletingLogId, setDeletingLogId] = useState(null);
 
     const [scheduleForm, setScheduleForm] = useState({
         title: '',
@@ -63,6 +74,39 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
 
     const schedules = eq?.maintenanceSchedule || [];
     const currentHours = eq?.currentEngineHours || 0;
+
+    const fetchMaintenanceLogs = useCallback(async () => {
+        if (!eq?._id) return;
+        try {
+            setLoadingLogs(true);
+            const data = await maintenanceService.getMaintenance({ toolId: eq._id });
+            const list = Array.isArray(data) ? data : (data.logs || []);
+            setMaintenanceLogs(list);
+        } catch (err) {
+            console.error('Failed to load maintenance logs:', err);
+        } finally {
+            setLoadingLogs(false);
+        }
+    }, [eq?._id]);
+
+    useEffect(() => {
+        fetchMaintenanceLogs();
+    }, [fetchMaintenanceLogs]);
+
+    const handleConfirmDeleteLog = async () => {
+        if (!deletingLogId) return;
+        try {
+            await maintenanceService.deleteMaintenance(deletingLogId);
+            notify.success('Maintenance record deleted');
+            setDeletingLogId(null);
+            fetchMaintenanceLogs();
+            onRefresh?.();
+        } catch (err) {
+            console.error('Delete maintenance log error:', err);
+            notify.error('Failed to delete maintenance record');
+            setDeletingLogId(null);
+        }
+    };
 
     const handleOpenAddDialog = () => {
         setScheduleForm({
@@ -128,13 +172,28 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
         }
     };
 
-    const handleOpenCompleteDialog = (task) => {
+    const [incompleteScheduleTask, setIncompleteScheduleTask] = useState(null);
+
+    const openCompleteDialogForTask = (task) => {
         setSelectedTask(task);
         setCompletionData({
-            currentEngineHours: String(currentHours),
+            currentEngineHours: '',
             notes: '',
         });
         setCompleteDialogOpen(true);
+    };
+
+    const handleOpenCompleteDialog = (task) => {
+        const checklist = task?.checklist || [];
+        const completedCount = checklist.filter((item) => item.done).length;
+        const hasIncomplete = checklist.length > 0 && completedCount < checklist.length;
+
+        if (hasIncomplete) {
+            setIncompleteScheduleTask(task);
+            return;
+        }
+
+        openCompleteDialogForTask(task);
     };
 
     const handleConfirmComplete = async (e) => {
@@ -142,8 +201,9 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
         if (!selectedTask || !eq?._id) return;
 
         try {
+            const currentHours = eq?.currentEngineHours || 0;
             await equipmentService.completeSchedule(eq._id, selectedTask._id, {
-                currentEngineHours: completionData.currentEngineHours
+                currentEngineHours: completionData.currentEngineHours !== ''
                     ? parseFloat(completionData.currentEngineHours)
                     : currentHours,
                 notes: completionData.notes,
@@ -151,6 +211,7 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
             notify.success('Service logged and schedule updated');
             setCompleteDialogOpen(false);
             setSelectedTask(null);
+            fetchMaintenanceLogs();
             onRefresh?.();
         } catch (err) {
             console.error('Complete schedule error:', err);
@@ -214,7 +275,7 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
                         variant="outlined"
                     />
                 </Box>
-                {isAdmin && (
+                {canManage && (
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
@@ -228,7 +289,7 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
             {schedules.length === 0 ? (
                 <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
                     No scheduled maintenance tasks configured for this equipment yet.
-                    {isAdmin && ' Click "+ Add" above to set up periodic service routines.'}
+                    {canManage && ' Click "+ Add" above to set up periodic service routines.'}
                 </Typography>
             ) : (
                 <Grid container spacing={2}>
@@ -281,9 +342,16 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
                                                 <Chip
                                                     size="small"
                                                     icon={<ChecklistIcon fontSize="small" />}
-                                                    label={`Checklist: ${task.checklist.filter(c => c.done).length}/${task.checklist.length} done`}
-                                                    variant="outlined"
-                                                    color={task.checklist.every(c => c.done) ? 'success' : 'default'}
+                                                    label={
+                                                        task.checklist.every(c => c.done)
+                                                            ? `Checklist: ${task.checklist.length}/${task.checklist.length} done`
+                                                            : task.checklist.some(c => c.done)
+                                                                ? `In Progress: ${task.checklist.filter(c => c.done).length}/${task.checklist.length} done`
+                                                                : `Checklist: ${task.checklist.length} tasks`
+                                                    }
+                                                    variant={task.checklist.some(c => c.done) ? "filled" : "outlined"}
+                                                    color={task.checklist.every(c => c.done) ? 'success' : (task.checklist.some(c => c.done) ? 'warning' : 'default')}
+                                                    sx={{ fontWeight: task.checklist.some(c => c.done) ? 600 : 400 }}
                                                 />
                                                 <Box mt={1} sx={{ pl: 0.5 }}>
                                                     {task.checklist.slice(0, 3).map((item, idx) => (
@@ -325,7 +393,7 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
                                         </Button>
                                     ) : <Box />}
 
-                                    {isAdmin && (
+                                    {canManage && (
                                         <IconButton
                                             size="small"
                                             color="error"
@@ -341,6 +409,148 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
                     ))}
                 </Grid>
             )}
+
+            {/* Divider between Schedules and History */}
+            <Divider sx={{ my: 4 }} />
+
+            {/* Service & Maintenance History Section */}
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={2.5}>
+                <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
+                    <HistoryIcon color="primary" sx={{ fontSize: 26 }} />
+                    <Typography variant="h6">Service & Maintenance History</Typography>
+                    <Chip
+                        label={`${maintenanceLogs.length} ${maintenanceLogs.length === 1 ? 'Record' : 'Records'}`}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                    />
+                </Box>
+            </Box>
+
+            {loadingLogs ? (
+                <Box display="flex" justifyContent="center" alignItems="center" py={4}>
+                    <CircularProgress size={32} />
+                </Box>
+            ) : maintenanceLogs.length === 0 ? (
+                <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
+                    <EngineeringIcon sx={{ fontSize: 44, color: 'text.disabled', mb: 1 }} />
+                    <Typography variant="subtitle1" fontWeight={600} color="text.secondary">
+                        No service history logged yet
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        Completed maintenance routines will be cataloged here when routines are marked complete.
+                    </Typography>
+                </Paper>
+            ) : (
+                <Grid container spacing={2}>
+                    {maintenanceLogs.map((log) => (
+                        <Grid size={{ xs: 12 }} key={log._id}>
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 2,
+                                    borderLeft: '4px solid #2563EB',
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    justifyContent: 'space-between',
+                                    alignItems: { xs: 'flex-start', sm: 'center' },
+                                    gap: 1.5,
+                                }}
+                            >
+                                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                    <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap" mb={0.75}>
+                                        <Typography variant="subtitle2" fontWeight={700}>
+                                            {new Date(log.date).toLocaleDateString('en-GB')}
+                                        </Typography>
+                                        {log.mechanic && (
+                                            <Chip
+                                                size="small"
+                                                icon={<PersonIcon fontSize="small" />}
+                                                label={log.mechanic.name || 'Mechanic'}
+                                                variant="outlined"
+                                            />
+                                        )}
+                                        {log.engineHours !== undefined && log.engineHours !== null && (
+                                            <Chip
+                                                size="small"
+                                                icon={<SpeedIcon fontSize="small" />}
+                                                label={`${log.engineHours} hrs`}
+                                                color="secondary"
+                                                variant="outlined"
+                                                sx={{ fontWeight: 600 }}
+                                            />
+                                        )}
+                                    </Box>
+                                    <Typography
+                                        variant="body2"
+                                        color="text.primary"
+                                        sx={{ whiteSpace: 'pre-line', wordBreak: 'break-word' }}
+                                    >
+                                        {log.details}
+                                    </Typography>
+
+                                    {log.checklist && log.checklist.length > 0 && (
+                                        <Box sx={{ mt: 1.5 }}>
+                                            <Typography
+                                                variant="caption"
+                                                fontWeight={700}
+                                                color="text.secondary"
+                                                sx={{ display: 'block', mb: 0.5 }}
+                                            >
+                                                Checklist Tasks:
+                                            </Typography>
+                                            <Box display="flex" flexWrap="wrap" gap={0.75}>
+                                                {log.checklist.map((item, idx) => (
+                                                    <Chip
+                                                        key={idx}
+                                                        size="small"
+                                                        icon={item.done ? <CheckCircleOutlineIcon sx={{ fontSize: '14px !important' }} /> : undefined}
+                                                        label={item.text}
+                                                        color={item.done ? "success" : "default"}
+                                                        variant={item.done ? "outlined" : "filled"}
+                                                        sx={{
+                                                            fontSize: '0.72rem',
+                                                            height: 24,
+                                                            textDecoration: item.done ? 'none' : 'line-through',
+                                                            opacity: item.done ? 1 : 0.6,
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Box>
+                                        </Box>
+                                    )}
+                                </Box>
+                                {canManage && (
+                                    <IconButton
+                                        size="small"
+                                        color="error"
+                                        title="Delete Log"
+                                        onClick={() => setDeletingLogId(log._id)}
+                                        sx={{ alignSelf: { xs: 'flex-end', sm: 'center' } }}
+                                    >
+                                        <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                )}
+                            </Paper>
+                        </Grid>
+                    ))}
+                </Grid>
+            )}
+
+            {/* Delete Maintenance Log Confirmation Dialog */}
+            <ConfirmDialog
+                open={Boolean(deletingLogId)}
+                title="Confirm Delete"
+                message="Are you sure you want to delete this maintenance service record?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                confirmColor="error"
+                onConfirm={handleConfirmDeleteLog}
+                onCancel={() => setDeletingLogId(null)}
+            />
+
 
             {/* Delete Schedule Confirmation Dialog */}
             <ConfirmDialog
@@ -491,10 +701,15 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
                             type="number"
                             fullWidth
                             required
-                            inputProps={{ min: currentHours, step: 'any' }}
+                            placeholder={`e.g. ${currentHours}`}
+                            inputProps={{ min: 0, step: 'any' }}
                             value={completionData.currentEngineHours}
                             onChange={(e) => setCompletionData({ ...completionData, currentEngineHours: e.target.value })}
-                            helperText={`Current equipment reading: ${currentHours} hrs`}
+                            helperText={
+                                completionData.currentEngineHours !== '' && parseFloat(completionData.currentEngineHours) < currentHours
+                                    ? `Note: Entered hours (${completionData.currentEngineHours} hrs) are lower than current equipment record (${currentHours} hrs). Log records your input; machine keeps highest.`
+                                    : `Current equipment reading: ${currentHours} hrs`
+                            }
                             sx={{ mb: 2, mt: 1 }}
                         />
                         <TextField
@@ -515,6 +730,22 @@ export default function EquipmentMaintenanceTab({ equipment, tool, onRefresh }) 
                     </DialogActions>
                 </Box>
             </Dialog>
+
+            {/* Incomplete Checklist Routine Confirmation Dialog */}
+            <ConfirmDialog
+                open={Boolean(incompleteScheduleTask)}
+                title="Incomplete Checklist Items"
+                message={`Only ${incompleteScheduleTask?.checklist?.filter(i => i.done).length || 0} of ${incompleteScheduleTask?.checklist?.length || 0} checklist items are marked done. Are you sure you want to complete this service routine without finishing all tasks?`}
+                confirmText="Complete Service Anyway"
+                cancelText="Cancel"
+                confirmColor="warning"
+                onConfirm={() => {
+                    const t = incompleteScheduleTask;
+                    setIncompleteScheduleTask(null);
+                    openCompleteDialogForTask(t);
+                }}
+                onCancel={() => setIncompleteScheduleTask(null)}
+            />
         </Box>
     );
 }

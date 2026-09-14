@@ -243,15 +243,18 @@ export default function ToolsPanel({ tools = [], loading, error, onCreate, onUpd
                 open={dialog.type === 'create' || dialog.type === 'update'}
                 onClose={closeDialog}
                 title={dialog.type === 'update' ? 'Update Equipment' : 'Create Equipment'}
-                submitButtonText={dialog.type === 'update' ? 'Update' : 'Create'}
-                cancelButtonText="Cancel"
-                onDelete={dialog.type === 'update' ? () => openDialog('delete', dialog.tool) : undefined}
-                deleteButtonText="Delete"
             >
                 {dialog.type === 'update' ? (
-                    <UpdateToolForm initialData={dialog.tool} onSubmit={handleUpdate} />
+                    <UpdateToolForm
+                        initialData={dialog.tool}
+                        onSubmit={handleUpdate}
+                        onCancel={closeDialog}
+                    />
                 ) : (
-                    <CreateToolForm onSubmit={handleCreate} />
+                    <CreateToolForm
+                        onSubmit={handleCreate}
+                        onCancel={closeDialog}
+                    />
                 )}
             </DialogComponent>
 

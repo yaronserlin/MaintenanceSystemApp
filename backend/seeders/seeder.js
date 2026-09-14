@@ -58,7 +58,7 @@ const seed = async () => {
         });
         const [valleyAdmin, valleyOperator, valleyMechanic] = await createUsers(valley, [
             { name: 'Megan Carter', email: 'admin@greenvalleyfarm.com', role: 'admin', password },
-            { name: 'Luke Bennett', email: 'operator@greenvalleyfarm.com', role: 'operator', password },
+            { name: 'Luke Bennett', email: 'operator@greenvalleyfarm.com', role: 'operator', password, mustChangePassword: true },
             { name: 'Tom Alvarez', email: 'mechanic@greenvalleyfarm.com', role: 'mechanic', password },
         ]);
 
@@ -100,6 +100,21 @@ const seed = async () => {
                     service('500-hour boom and hydraulic service', 'Replace hydraulic filters and inspect boom wear pads and pins.', 500, 4000, 'due_soon', ['Replace hydraulic return and pilot filters', 'Inspect boom sections, wear pads, and extension chains', 'Check carriage locking pins and attachment coupler', 'Grease boom pivot pins and stabilizer cylinders'], { nextDueHours: 4500, completed: 2 }),
                 ],
             },
+            {
+                name: 'Massey Ferguson 1742 S Tractor', serialNumber: 'MF1742S-2021-00638', localSerialNumber: 'TRACTOR-04', model: '1742 S',
+                description: '42 hp compact utility tractor used for dairy yard work, mowing, and feed storage maintenance', currentEngineHours: 1630, companyId: valley._id,
+                maintenanceSchedule: [service('250-hour compact tractor service', 'Change engine oil and filters and inspect the loader and three-point hitch.', 250, 1500, 'normal', ['Replace engine oil and spin-on filter', 'Grease loader pins and three-point hitch joints', 'Inspect loader hydraulic hoses and tire pressures'], { completed: 3 })],
+            },
+            {
+                name: 'Schuitemaker Rapide 5800 Silage Wagon', serialNumber: 'SR5800-2022-01427', localSerialNumber: 'SILAGE-WAGON-01', model: 'Rapide 5800',
+                description: '58 m3 forage wagon used to collect cut grass and transport silage to the clamp', currentEngineHours: 0, companyId: valley._id,
+                maintenanceSchedule: [service('Pickup and rotor wagon inspection', 'Inspect pickup tines, rotor knives, floor chain, and hydraulic drive.', 200, 800, 'due_soon', ['Replace worn pickup tines and check pickup cam track', 'Inspect rotor knife edges and retaining bolts', 'Check floor chain tension and hydraulic motor hoses'], { nextDueHours: 1000, completed: 1 })],
+            },
+            {
+                name: 'DeLaval VMS V300 Milking Robot', serialNumber: 'DLV300-2023-00219', localSerialNumber: 'MILKING-01', model: 'VMS V300',
+                description: 'Automatic milking system with teat preparation, milk quality monitoring, and wash station', currentEngineHours: 0, companyId: valley._id,
+                maintenanceSchedule: [service('Milking robot hygiene and sensor check', 'Inspect liners, teat spray, milk meters, and automatic wash cycle.', 0, 0, 'normal', ['Replace liners and inspect claw piece vacuum level', 'Clean milk meters and verify conductivity sensor', 'Run the complete alkaline and acid wash cycles'], { intervalDays: 7, nextDueDate: daysFromNow(3), completed: 3 })],
+            },
         ]);
 
         const valleyParts = await Part.insertMany([
@@ -112,21 +127,26 @@ const seed = async () => {
             { name: 'JCB Hydraulic Return Filter', partNumber: '32/925346', tool: valleyEquipment[4]._id, inStock: 4, companyId: valley._id },
         ]);
         await Maintenance.insertMany([
-            { tool: valleyEquipment[0]._id, mechanic: valleyMechanic._id, details: 'Completed 2,000-hour service before spring field preparation. Oil samples sent to the lab; no abnormal wear reported.', date: daysAgo(18), companyId: valley._id },
+            { tool: valleyEquipment[0]._id, mechanic: valleyMechanic._id, details: 'Completed 2,000-hour service before spring field preparation. Oil samples sent to the lab; no abnormal wear reported.', date: daysAgo(12), companyId: valley._id },
             { tool: valleyEquipment[1]._id, mechanic: valleyMechanic._id, details: 'Replaced 24 worn forage harvester knives and set the shear bar. Metal detector test passed.', date: daysAgo(9), companyId: valley._id },
-            { tool: valleyEquipment[4]._id, mechanic: valleyMechanic._id, details: 'Replaced the hydraulic return filter and repaired a small leak at the boom auxiliary coupler.', date: daysAgo(32), companyId: valley._id },
+            { tool: valleyEquipment[4]._id, mechanic: valleyMechanic._id, details: 'Replaced the hydraulic return filter and repaired a small leak at the boom auxiliary coupler.', date: daysAgo(7), companyId: valley._id },
+            { tool: valleyEquipment[5]._id, mechanic: valleyMechanic._id, details: 'Serviced the loader, replaced a damaged grease fitting, and checked the front tire pressures before yard duty.', date: daysAgo(5), companyId: valley._id },
+            { tool: valleyEquipment[6]._id, mechanic: valleyMechanic._id, details: 'Replaced six pickup tines and adjusted the floor chain tension ahead of second-cut grass collection.', date: daysAgo(3), companyId: valley._id },
+            { tool: valleyEquipment[7]._id, mechanic: valleyMechanic._id, details: 'Completed the weekly robot wash verification and replaced two worn teat liners.', date: daysAgo(1), companyId: valley._id },
         ]);
         const valleyFaults = await Fault.insertMany([
-            { code: 'FORAGE-014', tool: valleyEquipment[1]._id, operator: valleyOperator._id, description: 'Metal detector warning appears intermittently while harvesting first-cut grass; drum stops as designed.', engineHours: 1882, status: 'open', companyId: valley._id },
-            { code: 'TRACTOR-007', tool: valleyEquipment[0]._id, operator: valleyOperator._id, description: 'Hydraulic oil temperature rises above normal during continuous silage trailer loading.', engineHours: 2471, status: 'open', companyId: valley._id },
-            { code: 'BALER-003', tool: valleyEquipment[2]._id, operator: valleyOperator._id, description: 'Knotter 4 is missing twine on occasional bales at high plunger speed.', engineHours: 0, status: 'closed', closingEngineHours: 0, closedAt: daysAgo(4), companyId: valley._id },
+            { code: 'FORAGE-014', tool: valleyEquipment[1]._id, operator: valleyOperator._id, description: 'Metal detector warning appears intermittently while harvesting first-cut grass; drum stops as designed.', engineHours: 1882, status: 'open', companyId: valley._id, createdAt: daysAgo(13), updatedAt: daysAgo(13) },
+            { code: 'TRACTOR-007', tool: valleyEquipment[0]._id, operator: valleyOperator._id, description: 'Hydraulic oil temperature rises above normal during continuous silage trailer loading.', engineHours: 2471, status: 'open', companyId: valley._id, createdAt: daysAgo(10), updatedAt: daysAgo(10) },
+            { code: 'BALER-003', tool: valleyEquipment[2]._id, operator: valleyOperator._id, description: 'Knotter 4 is missing twine on occasional bales at high plunger speed.', engineHours: 0, status: 'closed', closingEngineHours: 0, closedAt: daysAgo(4), companyId: valley._id, createdAt: daysAgo(8), updatedAt: daysAgo(4) },
+            { code: 'MILK-002', tool: valleyEquipment[7]._id, operator: valleyOperator._id, description: 'Milk conductivity reading briefly exceeded the alert threshold during the morning wash cycle.', engineHours: 0, status: 'closed', closingEngineHours: 0, closedAt: daysAgo(2), companyId: valley._id, createdAt: daysAgo(6), updatedAt: daysAgo(2) },
+            { code: 'WAGON-005', tool: valleyEquipment[6]._id, operator: valleyOperator._id, description: 'Floor chain skips one sprocket tooth when the wagon is heavily loaded.', engineHours: 0, status: 'open', companyId: valley._id, createdAt: daysAgo(2), updatedAt: daysAgo(2) },
         ]);
         await linkFaults(valleyFaults);
 
         const prairie = await Company.create({ name: 'Prairie Crest Grain & Hay', slug: 'prairie-crest-grain-hay', isActive: true });
         const [prairieAdmin, prairieOperator, prairieMechanic] = await createUsers(prairie, [
             { name: 'Daniel Morgan', email: 'admin@prairiecrestfarm.com', role: 'admin', password },
-            { name: 'Sarah Wilson', email: 'operator@prairiecrestfarm.com', role: 'operator', password },
+            { name: 'Sarah Wilson', email: 'operator@prairiecrestfarm.com', role: 'operator', password, mustChangePassword: true },
             { name: 'Ethan Brooks', email: 'mechanic@prairiecrestfarm.com', role: 'mechanic', password },
         ]);
         const prairieEquipment = await Equipment.insertMany([
@@ -158,6 +178,21 @@ const seed = async () => {
                 description: '2,100 bushel grain cart with corner auger for combine unloading during harvest', currentEngineHours: 0, companyId: prairie._id,
                 maintenanceSchedule: [service('Grain cart auger and gearbox inspection', 'Inspect auger flighting, PTO driveline, gearbox oil, and tarp.', 0, 0, 'normal', ['Check vertical and horizontal auger flighting thickness', 'Inspect PTO shear bolt and driveline shields', 'Check gearbox oil level and wheel hub grease'], { intervalDays: 30, nextDueDate: daysFromNow(20), completed: 3 })],
             },
+            {
+                name: 'New Holland T7.315 Tractor', serialNumber: 'ZBDA15324-2021-00817', localSerialNumber: 'TRACTOR-05', model: 'T7.315',
+                description: '313 hp tractor used for drilling, spraying, fertilizer spreading, and road transport', currentEngineHours: 2940, companyId: prairie._id,
+                maintenanceSchedule: [service('600-hour engine and driveline service', 'Replace engine and transmission filters and inspect the front axle.', 600, 2400, 'normal', ['Replace engine oil and fuel filters', 'Inspect front axle hubs and four-wheel-drive driveshaft', 'Check AdBlue level and emissions system diagnostics'], { completed: 3 })],
+            },
+            {
+                name: 'Massey Ferguson 2370 Ultra HD Big Baler', serialNumber: 'MF2370-2022-00374', localSerialNumber: 'BALER-03', model: '2370 Ultra HD',
+                description: 'Large square baler producing dense 120 x 130 cm straw and hay bales for storage and sale', currentEngineHours: 0, companyId: prairie._id,
+                maintenanceSchedule: [service('Baler knotter and plunger inspection', 'Inspect knotter heads, plunger rails, needles, and bale density system.', 300, 0, 'due_soon', ['Check knotter billhooks and twine disc timing', 'Inspect plunger rollers and knife clearance', 'Test bale density sensor and hydraulic accumulator pressure'], { nextDueHours: 300, completed: 1 })],
+            },
+            {
+                name: 'Amazone Cirrus 6003-2C Drill', serialNumber: 'AMZC6003-2023-00952', localSerialNumber: 'DRILL-01', model: 'Cirrus 6003-2C',
+                description: '6 m combination seed drill for wheat, barley, cover crops, and fertilizer placement', currentEngineHours: 0, companyId: prairie._id,
+                maintenanceSchedule: [service('Seed drill coulter and metering inspection', 'Check coulter wear, metering rollers, fan, and seed calibration.', 0, 0, 'normal', ['Inspect RoTeC pro coulter discs and depth control', 'Calibrate seed rate for the next wheat field', 'Check fan belts, hydraulic hoses, and tramline markers'], { intervalDays: 30, nextDueDate: daysFromNow(11), completed: 3 })],
+            },
         ]);
 
         const prairieParts = await Part.insertMany([
@@ -167,15 +202,24 @@ const seed = async () => {
             { name: 'John Deere 6220R Fuel Filter', partNumber: 'RE541922', tool: prairieEquipment[2]._id, inStock: 6, companyId: prairie._id },
             { name: 'John Deere 569 Baler Belt', partNumber: 'AE57479', tool: prairieEquipment[3]._id, inStock: 4, companyId: prairie._id },
             { name: 'Brent Grain Cart PTO Shear Bolt', partNumber: 'BR-2096-SB', tool: prairieEquipment[4]._id, inStock: 20, companyId: prairie._id },
+            { name: 'New Holland T7 Engine Oil Filter', partNumber: '84228431', tool: prairieEquipment[5]._id, inStock: 5, companyId: prairie._id },
+            { name: 'Massey Ferguson Baler Twine Knife', partNumber: 'XHD-2370-411', tool: prairieEquipment[6]._id, inStock: 8, companyId: prairie._id },
+            { name: 'Amazone Drill Coulter Disc', partNumber: 'AMZ-9576-DR', tool: prairieEquipment[7]._id, inStock: 24, companyId: prairie._id },
         ]);
         await Maintenance.insertMany([
-            { tool: prairieEquipment[0]._id, mechanic: prairieMechanic._id, details: 'Completed post-harvest clean-down and replaced two worn rotor rasp bars. Yield monitor calibration stored for next season.', date: daysAgo(61), companyId: prairie._id },
-            { tool: prairieEquipment[3]._id, mechanic: prairieMechanic._id, details: 'Replaced three cracked pickup tines, aligned the belts, and tested the net wrap cycle with an empty chamber.', date: daysAgo(24), companyId: prairie._id },
+            { tool: prairieEquipment[0]._id, mechanic: prairieMechanic._id, details: 'Completed post-harvest clean-down and replaced two worn rotor rasp bars. Yield monitor calibration stored for next season.', date: daysAgo(14), companyId: prairie._id },
+            { tool: prairieEquipment[3]._id, mechanic: prairieMechanic._id, details: 'Replaced three cracked pickup tines, aligned the belts, and tested the net wrap cycle with an empty chamber.', date: daysAgo(11), companyId: prairie._id },
+            { tool: prairieEquipment[1]._id, mechanic: prairieMechanic._id, details: 'Checked Vario transmission pressures and changed the transmission filter before deep tillage.', date: daysAgo(8), companyId: prairie._id },
+            { tool: prairieEquipment[5]._id, mechanic: prairieMechanic._id, details: 'Changed engine oil and fuel filters on the T7 before drilling and inspected the front axle driveshaft.', date: daysAgo(6), companyId: prairie._id },
+            { tool: prairieEquipment[6]._id, mechanic: prairieMechanic._id, details: 'Timed the knotter heads and replaced a worn twine knife on the large square baler.', date: daysAgo(4), companyId: prairie._id },
+            { tool: prairieEquipment[7]._id, mechanic: prairieMechanic._id, details: 'Calibrated the seed metering units for winter wheat and replaced two worn coulter discs.', date: daysAgo(2), companyId: prairie._id },
         ]);
         const prairieFaults = await Fault.insertMany([
-            { code: 'COMBINE-021', tool: prairieEquipment[0]._id, operator: prairieOperator._id, description: 'Clean grain elevator slip alarm activates when harvesting high-moisture corn.', engineHours: 3252, status: 'open', companyId: prairie._id },
-            { code: 'TRACTOR-011', tool: prairieEquipment[2]._id, operator: prairieOperator._id, description: 'Engine cranks longer than normal after sitting overnight; inspect fuel filter head for air ingress.', engineHours: 5114, status: 'open', companyId: prairie._id },
-            { code: 'BALER-009', tool: prairieEquipment[3]._id, operator: prairieOperator._id, description: 'Net wrap occasionally starts late on dense alfalfa windrows.', engineHours: 0, status: 'closed', closingEngineHours: 0, closedAt: daysAgo(12), companyId: prairie._id },
+            { code: 'COMBINE-021', tool: prairieEquipment[0]._id, operator: prairieOperator._id, description: 'Clean grain elevator slip alarm activates when harvesting high-moisture corn.', engineHours: 3252, status: 'open', companyId: prairie._id, createdAt: daysAgo(14), updatedAt: daysAgo(14) },
+            { code: 'TRACTOR-011', tool: prairieEquipment[2]._id, operator: prairieOperator._id, description: 'Engine cranks longer than normal after sitting overnight; inspect fuel filter head for air ingress.', engineHours: 5114, status: 'open', companyId: prairie._id, createdAt: daysAgo(12), updatedAt: daysAgo(12) },
+            { code: 'BALER-009', tool: prairieEquipment[3]._id, operator: prairieOperator._id, description: 'Net wrap occasionally starts late on dense alfalfa windrows.', engineHours: 0, status: 'closed', closingEngineHours: 0, closedAt: daysAgo(10), companyId: prairie._id, createdAt: daysAgo(13), updatedAt: daysAgo(10) },
+            { code: 'DRILL-004', tool: prairieEquipment[7]._id, operator: prairieOperator._id, description: 'Left tramline marker folds slowly and does not fully latch in transport position.', engineHours: 0, status: 'open', companyId: prairie._id, createdAt: daysAgo(7), updatedAt: daysAgo(7) },
+            { code: 'BALER-015', tool: prairieEquipment[6]._id, operator: prairieOperator._id, description: 'Knotter 2 produces an uneven twine tail on dense straw bales.', engineHours: 0, status: 'closed', closingEngineHours: 0, closedAt: daysAgo(3), companyId: prairie._id, createdAt: daysAgo(5), updatedAt: daysAgo(3) },
         ]);
         await linkFaults(prairieFaults);
 

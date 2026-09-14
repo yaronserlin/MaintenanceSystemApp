@@ -117,8 +117,24 @@ export default function UserPanel({
         );
     }, [users, searchQuery]);
 
-    if (loading) return <LoadingComponent message="Loading users..." />;
-    if (error) return <ErrorComponent message={error} />;
+    if (loading) {
+        return (
+            <Grid size={{ xs: 12, lg: 6 }}>
+                <Paper variant="outlined" sx={{ p: 4, borderRadius: 3, textAlign: 'center', borderLeft: '4px solid #2563EB' }}>
+                    <LoadingComponent message="Loading users..." />
+                </Paper>
+            </Grid>
+        );
+    }
+    if (error) {
+        return (
+            <Grid size={{ xs: 12, lg: 6 }}>
+                <Paper variant="outlined" sx={{ p: 4, borderRadius: 3, textAlign: 'center', borderLeft: '4px solid #2563EB' }}>
+                    <ErrorComponent message={error} />
+                </Paper>
+            </Grid>
+        );
+    }
 
     return (
         <Grid size={{ xs: 12, lg: 6 }}>
@@ -228,6 +244,15 @@ export default function UserPanel({
                                                     variant="outlined"
                                                     sx={{ height: 18, fontSize: '0.6rem', fontWeight: 600 }}
                                                 />
+                                                {u.mustChangePassword && (
+                                                    <Chip
+                                                        label="Temp Password"
+                                                        size="small"
+                                                        color="warning"
+                                                        variant="outlined"
+                                                        sx={{ height: 18, fontSize: '0.6rem', fontWeight: 600 }}
+                                                    />
+                                                )}
                                             </Box>
                                             <Typography
                                                 variant="caption"
@@ -355,6 +380,15 @@ export default function UserPanel({
                                                         size="small"
                                                         color="primary"
                                                         sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                                {u.mustChangePassword && (
+                                                    <Chip
+                                                        label="Must Change Password"
+                                                        size="small"
+                                                        color="warning"
+                                                        variant="outlined"
+                                                        sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }}
                                                     />
                                                 )}
                                             </Box>
